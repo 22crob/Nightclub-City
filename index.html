@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Nightclub City</title>
+  <link rel="stylesheet" href="styles/game.css" />
+</head>
+<body>
+  <main id="app">
+    <section id="game-shell" aria-label="Nightclub City">
+      <header id="hud">
+        <div class="brand">
+          <div class="brand-mark">NC</div>
+          <div>
+            <strong>Nightclub City</strong>
+            <span id="club-name">Neon Room</span>
+          </div>
+        </div>
+
+        <div class="hud-stat">
+          <span class="hud-label">LEVEL</span>
+          <strong id="level-value">1</strong>
+        </div>
+        <div class="hud-stat">
+          <span class="hud-label">CASH</span>
+          <strong id="cash-value">$2,500</strong>
+        </div>
+        <div class="hud-stat xp-stat">
+          <span class="hud-label">XP</span>
+          <div class="xp-track"><div id="xp-fill"></div></div>
+          <strong id="xp-value">0 / 100</strong>
+        </div>
+      </header>
+
+      <aside id="nav-rail">
+        <button class="nav-button active" data-panel="club" aria-label="Club">
+          <span class="nav-icon">◆</span><span>Club</span>
+        </button>
+        <button class="nav-button" id="design-button" data-panel="design" aria-label="Design">
+          <span class="nav-icon">✦</span><span>Design</span>
+        </button>
+        <button class="nav-button" data-panel="goals" aria-label="Goals">
+          <span class="nav-icon">★</span><span>Goals</span>
+        </button>
+      </aside>
+
+      <section id="stage-wrap">
+        <canvas id="game-canvas" width="1400" height="900"></canvas>
+        <div id="stage-tip">Drag to pan · Scroll to zoom</div>
+      </section>
+
+      <aside id="design-drawer" aria-hidden="true">
+        <div class="drawer-head">
+          <div>
+            <span class="eyebrow">BUILD & STYLE</span>
+            <h2>Design</h2>
+          </div>
+          <button id="close-design" aria-label="Close design menu">×</button>
+        </div>
+
+        <nav id="design-categories" aria-label="Design categories">
+          <button class="category active" data-category="bars"><span class="category-art">▰</span><span>Bars</span></button>
+          <button class="category" data-category="seating"><span class="category-art">▱</span><span>Seating</span></button>
+          <button class="category" data-category="dance"><span class="category-art">◇</span><span>Dance</span></button>
+          <button class="category" data-category="walls"><span class="category-art">▦</span><span>Walls</span></button>
+          <button class="category" data-category="decor"><span class="category-art">✧</span><span>Decor</span></button>
+        </nav>
+
+        <div id="design-items"></div>
+      </aside>
+
+      <div id="toast" role="status"></div>
+    </section>
+  </main>
+
+  <script type="module" src="src/game.js"></script>
+</body>
+</html>
