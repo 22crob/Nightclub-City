@@ -7,6 +7,8 @@ const CLUB_H: int = 11
 const WALL_H: float = 108.0
 
 @onready var camera: Camera2D = $Camera2D
+@onready var zoom_out_button: Button = $HUD/ZoomControls/ZoomOut
+@onready var zoom_in_button: Button = $HUD/ZoomControls/ZoomIn
 
 var dragging: bool = false
 var zoom_level: float = 1.0
@@ -40,6 +42,8 @@ var npc_colors: Array[Color] = [
 
 func _ready() -> void:
 	print("Nightclub City Level 1 safe visual pass loaded.")
+	zoom_out_button.pressed.connect(_zoom_out)
+	zoom_in_button.pressed.connect(_zoom_in)
 	queue_redraw()
 
 func _process(delta: float) -> void:
@@ -60,6 +64,12 @@ func _unhandled_input(event: InputEvent) -> void:
 func _set_zoom(value: float) -> void:
 	zoom_level = clamp(value, 0.70, 1.55)
 	camera.zoom = Vector2.ONE * zoom_level
+
+func _zoom_out() -> void:
+	_set_zoom(zoom_level - 0.10)
+
+func _zoom_in() -> void:
+	_set_zoom(zoom_level + 0.10)
 
 func _iso(tile_x: float, tile_y: float) -> Vector2:
 	return Vector2(
