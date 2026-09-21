@@ -105,3 +105,34 @@ theme_override_colors/font_color = Color(0.50, 0.58, 0.74, 1)
 theme_override_font_sizes/font_size = 11
 text = "LEVEL 1 VISUAL PASS • procedural placeholder art"
 horizontal_alignment = 1
+
+
+[node name="ZoomControls" type="ColorRect" parent="HUD"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -242.0
+offset_top = -58.0
+offset_right = -142.0
+offset_bottom = -18.0
+grow_horizontal = 0
+grow_vertical = 0
+color = Color(0.045, 0.037, 0.075, 0.96)
+
+[node name="ZoomOut" type="Button" parent="HUD/ZoomControls"]
+offset_left = 6.0
+offset_top = 4.0
+offset_right = 47.0
+offset_bottom = 36.0
+theme_override_font_sizes/font_size = 20
+text = "−"
+
+[node name="ZoomIn" type="Button" parent="HUD/ZoomControls"]
+offset_left = 53.0
+offset_top = 4.0
+offset_right = 94.0
+offset_bottom = 36.0
+theme_override_font_sizes/font_size = 20
+text = "+"
