@@ -7,62 +7,101 @@ script = ExtResource("1_main")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 enabled = true
-position = Vector2(0, 30)
+position = Vector2(58, 104)
 
 [node name="HUD" type="CanvasLayer" parent="."]
 
-[node name="TopBar" type="Panel" parent="HUD"]
+[node name="BrandPanel" type="ColorRect" parent="HUD"]
 offset_left = 18.0
 offset_top = 16.0
-offset_right = 470.0
-offset_bottom = 94.0
+offset_right = 334.0
+offset_bottom = 78.0
+color = Color(0.045, 0.037, 0.075, 0.94)
 
-[node name="Title" type="Label" parent="HUD/TopBar"]
-offset_left = 18.0
-offset_top = 10.0
-offset_right = 430.0
-offset_bottom = 38.0
-theme_override_font_sizes/font_size = 22
+[node name="Accent" type="ColorRect" parent="HUD/BrandPanel"]
+offset_right = 4.0
+offset_bottom = 62.0
+color = Color(0.74, 0.24, 1, 1)
+
+[node name="Title" type="Label" parent="HUD/BrandPanel"]
+offset_left = 17.0
+offset_top = 8.0
+offset_right = 305.0
+offset_bottom = 33.0
+theme_override_colors/font_color = Color(0.97, 0.93, 1, 1)
+theme_override_font_sizes/font_size = 19
 text = "NIGHTCLUB CITY"
 
-[node name="Status" type="Label" parent="HUD/TopBar"]
+[node name="Status" type="Label" parent="HUD/BrandPanel"]
 offset_left = 18.0
-offset_top = 42.0
-offset_right = 430.0
-offset_bottom = 66.0
-theme_override_font_sizes/font_size = 14
-text = "Starter Club • Level 1 • Prototype"
+offset_top = 34.0
+offset_right = 300.0
+offset_bottom = 55.0
+theme_override_colors/font_color = Color(0.62, 0.74, 0.94, 1)
+theme_override_font_sizes/font_size = 12
+text = "LEVEL 1  •  STARTER CLUB"
 
-[node name="Controls" type="Panel" parent="HUD"]
+[node name="StatsPanel" type="ColorRect" parent="HUD"]
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -346.0
+offset_left = -310.0
 offset_top = 16.0
 offset_right = -18.0
 offset_bottom = 78.0
 grow_horizontal = 0
+color = Color(0.045, 0.037, 0.075, 0.94)
 
-[node name="Label" type="Label" parent="HUD/Controls"]
+[node name="Stats" type="Label" parent="HUD/StatsPanel"]
 offset_left = 14.0
-offset_top = 10.0
-offset_right = 316.0
+offset_top = 8.0
+offset_right = 278.0
 offset_bottom = 52.0
+theme_override_colors/font_color = Color(0.93, 0.95, 1, 1)
 theme_override_font_sizes/font_size = 13
-text = "Drag to pan • Scroll to zoom\nThis is the first playable club shell."
+text = "$ 2,500        XP  0 / 100\nDrag to pan   •   Scroll to zoom"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="BottomHint" type="Label" parent="HUD"]
+[node name="DesignChip" type="ColorRect" parent="HUD"]
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -128.0
+offset_top = -58.0
+offset_right = -18.0
+offset_bottom = -18.0
+grow_horizontal = 0
+grow_vertical = 0
+color = Color(0.22, 0.10, 0.34, 0.96)
+
+[node name="Label" type="Label" parent="HUD/DesignChip"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.95, 0.84, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "DESIGN"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BuildNote" type="Label" parent="HUD"]
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -42.0
-offset_bottom = -14.0
+offset_left = 18.0
+offset_top = -34.0
+offset_right = -150.0
+offset_bottom = -12.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_colors/font_color = Color(0.72, 0.78, 0.96, 1)
-theme_override_font_sizes/font_size = 14
-text = "PLACEHOLDER ART — testing layout, camera, scale, and nightclub flow"
+theme_override_colors/font_color = Color(0.50, 0.58, 0.74, 1)
+theme_override_font_sizes/font_size = 11
+text = "LEVEL 1 VISUAL PASS • procedural placeholder art"
 horizontal_alignment = 1
