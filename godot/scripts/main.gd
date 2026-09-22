@@ -533,7 +533,10 @@ func _select_item(index: int) -> void:
 	_deselect_object()
 	current_item = item.duplicate(true)
 	hover_tile = _world_to_tile(get_global_mouse_position())
-	design_hint.text = str(current_item["name"]) + " • click floor to place • right-click/Esc cancels"
+	if str(current_item["kind"]) == "bar":
+		design_hint.text = "Bar Segment • place against a wall • add the next segment directly beside it"
+	else:
+		design_hint.text = str(current_item["name"]) + " • click floor to place • right-click/Esc cancels"
 	queue_redraw()
 
 func _cancel_placement() -> void:
@@ -732,14 +735,14 @@ func _draw_modular_bar_segment(obj: Dictionary) -> void:
 
 	# The neon face runs edge-to-edge so repeated copies meet seamlessly.
 	if int(obj["y"]) == 0:
-		var front_a: Vector2 = _iso(x, y + 1.0) - Vector2(0, 22)
-		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
-		draw_line(front_a, front_b, Color("#2de3ff"), 2.8)
+		var top_front_a: Vector2 = _iso(x, y + 1.0) - Vector2(0, 22)
+		var top_front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
+		draw_line(top_front_a, top_front_b, Color("#2de3ff"), 2.8)
 		_draw_bar_back_shelf_top(x, color)
 	elif int(obj["x"]) == 0:
-		var front_a: Vector2 = _iso(x + 1.0, y) - Vector2(0, 22)
-		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
-		draw_line(front_a, front_b, Color("#2de3ff"), 2.8)
+		var left_front_a: Vector2 = _iso(x + 1.0, y) - Vector2(0, 22)
+		var left_front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
+		draw_line(left_front_a, left_front_b, Color("#2de3ff"), 2.8)
 		_draw_bar_back_shelf_left(y, color)
 
 func _draw_bar_back_shelf_top(x: float, color: Color) -> void:
