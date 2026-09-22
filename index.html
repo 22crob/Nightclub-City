@@ -1,60 +1,46 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#090815" />
-  <title>Nightclub City</title>
-  <link rel="stylesheet" href="/styles/game.css" />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Nightclub City</title>
+<link rel="stylesheet" href="./playable/game.css" />
 </head>
 <body>
-  <main id="app">
-    <section id="game-shell" aria-label="Nightclub City">
-      <div id="game-root" aria-label="Nightclub game canvas"></div>
-
-      <header id="hud">
-        <div class="brand">
-          <div class="brand-mark">NC</div>
-          <div>
-            <strong>Nightclub City</strong>
-            <span id="club-name">Neon Room · Engine Foundation</span>
-          </div>
-        </div>
-        <div class="hud-stat"><span class="hud-label">LEVEL</span><strong id="level-value">1</strong></div>
-        <div class="hud-stat"><span class="hud-label">CASH</span><strong id="cash-value">$2,500</strong></div>
-        <div class="hud-stat xp-stat">
-          <span class="hud-label">XP</span>
-          <div class="xp-track"><div id="xp-fill"></div></div>
-          <strong id="xp-value">0 / 100</strong>
-        </div>
-      </header>
-
-      <aside id="nav-rail">
-        <button class="nav-button active" data-panel="club" aria-label="Club"><span class="nav-icon">◆</span><span>Club</span></button>
-        <button class="nav-button" id="design-button" data-panel="design" aria-label="Design"><span class="nav-icon">✦</span><span>Design</span></button>
-        <button class="nav-button" data-panel="goals" aria-label="Goals"><span class="nav-icon">★</span><span>Goals</span></button>
-      </aside>
-
-      <div id="stage-tip">Drag to pan · Scroll to zoom · Design to place items</div>
-
-      <aside id="design-drawer" aria-hidden="true">
-        <div class="drawer-head">
-          <div><span class="eyebrow">BUILD & STYLE</span><h2>Design</h2></div>
-          <button id="close-design" aria-label="Close design menu">×</button>
-        </div>
-        <nav id="design-categories" aria-label="Design categories">
-          <button class="category active" data-category="bars"><span class="category-art">▰</span><span>Bars</span></button>
-          <button class="category" data-category="seating"><span class="category-art">▱</span><span>Seating</span></button>
-          <button class="category" data-category="dance"><span class="category-art">◇</span><span>Dance</span></button>
-          <button class="category" data-category="walls"><span class="category-art">▦</span><span>Walls</span></button>
-          <button class="category" data-category="decor"><span class="category-art">✧</span><span>Decor</span></button>
-        </nav>
-        <div id="design-items"></div>
-      </aside>
-
-      <div id="toast" role="status" aria-live="polite"></div>
-    </section>
-  </main>
-  <script type="module" src="/src/main.js"></script>
+<div id="app">
+<canvas id="game" aria-label="Playable isometric nightclub"></canvas>
+<header id="hud">
+  <div class="brand"><div class="brandMark">NC</div><div><strong>Nightclub City</strong><small>Build it · open it · grow it</small></div></div>
+  <div class="stat"><span>LEVEL</span><strong id="level">1</strong></div>
+  <div class="stat"><span>CASH</span><strong id="cash">$4,500</strong></div>
+  <div class="stat"><span>STATUS</span><strong id="rep">8 REP</strong></div>
+  <div class="stat"><span>RATING</span><strong id="rating">3.0 ★</strong></div>
+  <div class="stat xpStat"><span>XP</span><div class="xpTrack"><div class="xpFill" id="xpFill"></div></div><strong id="xpText">0 / 140</strong></div>
+  <button id="openBtn" type="button">OPEN CLUB</button>
+</header>
+<aside id="rail">
+  <button class="nav active" data-panel="club"><b>◆</b><span>Club</span></button>
+  <button class="nav" data-panel="design" id="designNav"><b>✦</b><span>Design</span></button>
+  <button class="nav" data-panel="goals" id="goalsNav"><b>★</b><span>Goals</span></button>
+</aside>
+<section id="nightStrip"><div><span id="nightLabel">NIGHT 1</span><strong id="clock">BUILD MODE</strong></div><div><span>TONIGHT</span><strong id="nightIncome">$0</strong></div><div><span>GUESTS</span><strong id="nightGuests">0</strong></div></section>
+<aside class="drawer" id="designDrawer" aria-hidden="true">
+  <div class="drawerHead"><div><span class="eyebrow">BUILD & STYLE</span><h2>Design</h2></div><button class="close" data-close>×</button></div>
+  <nav id="cats"></nav>
+  <div class="tools"><button id="bulldoze" type="button">Bulldoze</button><button id="resetLayout" type="button">Reset layout</button></div>
+  <div id="items"></div>
+</aside>
+<aside class="drawer" id="goalsDrawer" aria-hidden="true">
+  <div class="drawerHead"><div><span class="eyebrow">CLUB PROGRESSION</span><h2>Goals</h2></div><button class="close" data-close>×</button></div>
+  <p class="drawerCopy">Build a better club, serve more guests, and climb from a starter room to a Level 10 nightlife destination.</p>
+  <div id="goals"></div>
+</aside>
+<section id="report" aria-live="polite"><span class="eyebrow">NIGHT REPORT</span><h2>Doors Closed</h2><p>Your club keeps everything you earned. Build upgrades before the next night.</p><div class="reportGrid"><div><span>INCOME</span><strong id="reportIncome">$0</strong></div><div><span>GUESTS</span><strong id="reportGuests">0</strong></div><div><span>RATING</span><strong id="reportRating">3.0★</strong></div></div><button id="reportClose" type="button">BACK TO CLUB</button></section>
+<div id="tip">Drag to pan · Scroll to zoom · Build while closed · Open the club to earn cash</div><div id="toast" role="status" aria-live="polite"></div>
+</div>
+<script src="./playable/game-1.js"></script>
+<script src="./playable/game-2.js"></script>
+<script src="./playable/game-3.js"></script>
+<script src="./playable/game-4.js"></script>
 </body>
 </html>
