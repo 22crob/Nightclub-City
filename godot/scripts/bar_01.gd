@@ -1,5 +1,7 @@
 extends Node2D
 
+const BAR_TEXTURE: Texture2D = preload("res://assets/bar/bar_module_01.png")
+
 const TILE_W: float = 72.0
 const TILE_H: float = 36.0
 const FOOTPRINT_W: int = 1
@@ -28,26 +30,6 @@ func _tile_points(x: float, y: float, width: float, depth: float) -> PackedVecto
 		_iso(x, y + depth)
 	])
 
-func _draw_iso_box(
-	x: float,
-	y: float,
-	width: float,
-	depth: float,
-	height: float,
-	top: Color,
-	left: Color,
-	right: Color
-) -> void:
-	var a: Vector2 = _iso(x, y)
-	var b: Vector2 = _iso(x + width, y)
-	var c: Vector2 = _iso(x + width, y + depth)
-	var d: Vector2 = _iso(x, y + depth)
-	var up: Vector2 = Vector2(0.0, height)
-
-	draw_polygon(PackedVector2Array([d - up, c - up, c, d]), PackedColorArray([left]))
-	draw_polygon(PackedVector2Array([b - up, c - up, c, b]), PackedColorArray([right]))
-	draw_polygon(PackedVector2Array([a - up, b - up, c - up, d - up]), PackedColorArray([top]))
-
 func _draw() -> void:
 	# Exact logical footprint: one production 72 x 36 isometric tile.
 	var footprint: PackedVector2Array = _tile_points(0.0, 0.0, 1.0, 1.0)
@@ -55,22 +37,9 @@ func _draw() -> void:
 	for i in range(footprint.size()):
 		draw_line(footprint[i], footprint[(i + 1) % footprint.size()], Color(0.25, 0.85, 1.0, 0.75), 1.5)
 
-	# Universal proxy back shelf. Final art will replace this without changing footprint.
-	_draw_iso_box(
-		0.08, 0.05, 0.84, 0.24, 70.0,
-		Color("#44315e"), Color("#251b37"), Color("#322346")
-	)
-
-	# Universal proxy front counter, fully contained inside the 1 x 1 tile.
-	_draw_iso_box(
-		0.08, 0.55, 0.84, 0.34, 35.0,
-		Color("#315f78"), Color("#1f3d50"), Color("#274d63")
-	)
-
-	# Seam line makes repeated modules easy to inspect.
-	var glow_a: Vector2 = _iso(0.08, 0.55) - Vector2(0.0, 36.0)
-	var glow_b: Vector2 = _iso(0.92, 0.55) - Vector2(0.0, 36.0)
-	draw_line(glow_a, glow_b, Color("#38d8ff"), 2.0)
+	# PNG ground center is (72,112); the existing tile center is (0,18).
+	# Keep the back-corner PlacementAnchor and all interaction markers unchanged.
+	draw_texture(BAR_TEXTURE, Vector2(-72.0, -94.0))
 
 	if show_debug_markers:
 		_draw_marker(placement_anchor.position, Color("#f6d365"), 4.0)

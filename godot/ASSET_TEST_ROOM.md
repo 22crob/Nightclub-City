@@ -24,9 +24,18 @@ Each 1 x 1 module owns:
 - Green: one bartender position
 - Pink: one customer interaction position
 
-## Approval rule
+## Blender artwork
 
-Do not replace the proxy with polished artwork until all of these pass:
+The test room now displays `assets/bar/bar_module_01.png`, an original Blender
+render with a dark counter, bottle shelves, and cyan/violet trim. The 144x144
+transparent canvas contains a 72x36 ground footprint. Its ground center is
+(72,112); drawing at (-72,-94) aligns it to the existing tile center (0,18).
+One module step remains (36,18). Placement and interaction markers are unchanged.
+The main club still uses its existing artwork; this scene is the calibration gate.
+
+## Review checklist
+
+Review the Blender artwork against these criteria before adopting it in the main club:
 
 1. Six identical 1 x 1 copies align continuously.
 2. Neighboring copies do not visually overlap.
