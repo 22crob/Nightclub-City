@@ -924,7 +924,7 @@ func _draw_bar_back_shelf_top(x: float, color: Color) -> void:
 func _draw_bar_back_shelf_left(y: float, color: Color) -> void:
 	var a: Vector2 = _iso(0.0, y)
 	var b: Vector2 = _iso(0.0, y + 1.0)
-	var shelf_h: float = 54.0
+	var shelf_h: float = 40.0
 	var panel: PackedVector2Array = PackedVector2Array([
 		a - Vector2(0, 4),
 		b - Vector2(0, 4),
@@ -933,10 +933,10 @@ func _draw_bar_back_shelf_left(y: float, color: Color) -> void:
 	])
 
 	draw_polygon(panel, PackedColorArray([color.darkened(0.54)]))
-	draw_line(a - Vector2(0, 22), b - Vector2(0, 22), Color("#a942d6"), 1.7)
-	draw_line(a - Vector2(0, 42), b - Vector2(0, 42), Color("#2bcbe8"), 1.2)
+	draw_line(a - Vector2(0, 16), b - Vector2(0, 16), Color("#a942d6"), 1.6)
+	draw_line(a - Vector2(0, 31), b - Vector2(0, 31), Color("#2bcbe8"), 1.1)
 
-	var bottle_center: Vector2 = (a + b) * 0.5 - Vector2(0, 34)
+	var bottle_center: Vector2 = (a + b) * 0.5 - Vector2(0, 24)
 	draw_circle(bottle_center - Vector2(5, 2), 2.5, Color("#ff8d45"))
 	draw_circle(bottle_center, 2.5, Color("#cf55ff"))
 	draw_circle(bottle_center + Vector2(5, 2), 2.5, Color("#55d9ff"))
@@ -1253,9 +1253,9 @@ func _bar_bartender_position(obj: Dictionary) -> Vector2:
 	var y: float = float(obj["y"])
 
 	if int(obj["y"]) == 0:
-		return Vector2(x + 0.5, y + 0.40)
+		return Vector2(x + 0.5, y + 0.37)
 	if int(obj["x"]) == 0:
-		return Vector2(x + 0.40, y + 0.5)
+		return Vector2(x + 0.37, y + 0.5)
 
 	return _object_center(obj)
 
