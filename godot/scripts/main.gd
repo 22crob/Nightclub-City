@@ -809,7 +809,13 @@ func _choose_activity_target(activity: String, seed: int, npc_index: int) -> Vec
 	for offset in range(targets.size()):
 		var candidate_index: int = (start_index + offset) % targets.size()
 		var candidate: Vector2 = targets[candidate_index]
+		if _is_nav_tile_blocked(_nav_tile_from_position(candidate)):
+			continue
 		if not _spot_is_reserved(candidate, npc_index):
+			return candidate
+
+	for candidate in targets:
+		if not _is_nav_tile_blocked(_nav_tile_from_position(candidate)):
 			return candidate
 
 	return targets[start_index]
@@ -819,7 +825,9 @@ func _spot_is_reserved(candidate: Vector2, ignore_index: int) -> bool:
 		if i == ignore_index:
 			continue
 		var other: Dictionary = npc_agents[i]
-		var reserved: Vector2 = other.get("reserved_spot", NO_SPOT)
+		var reserved: Vector2 = NO_SPOT
+		if other.has("reserved_spot"):
+			reserved = other["reserved_spot"]
 		if reserved == NO_SPOT:
 			continue
 		if reserved.distance_to(candidate) < 0.28:
@@ -1100,9 +1108,11 @@ func _crowd_speed_scale(npc_index: int, pos: Vector2, next_point: Vector2) -> fl
 		if npc_index > i:
 			if distance < 0.24:
 				return 0.12
-			scale = minf(scale, 0.38)
+			if scale > 0.38:
+				scale = 0.38
 		else:
-			scale = minf(scale, 0.72)
+			if scale > 0.72:
+				scale = 0.72
 
 	return scale
 
