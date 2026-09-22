@@ -97,7 +97,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Single Bar Module v1 loaded.")
+	print("Nightclub City Modular Bar Visual Polish v1 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -782,6 +782,11 @@ func _place_current_item(tile: Vector2i) -> void:
 	queue_redraw()
 
 func _draw_placed_objects() -> void:
+	# Draw wall-mounted back shelves first so counters always render in front.
+	for obj in placed_objects:
+		if str(obj["kind"]) == "bar" and str(obj["id"]) == "bar_segment":
+			_draw_modular_bar_shelf(obj)
+
 	for obj in placed_objects:
 		_draw_build_item(obj)
 
@@ -832,74 +837,96 @@ func _draw_build_item(obj: Dictionary) -> void:
 		var glow_pos: Vector2 = _iso(x + 0.5, y + 0.5) - Vector2(0, 62)
 		draw_circle(glow_pos, 8.0, color)
 
+func _draw_modular_bar_shelf(obj: Dictionary) -> void:
+	var x: float = float(obj["x"])
+	var y: float = float(obj["y"])
+	var color: Color = obj["color"]
+
+	if int(obj["y"]) == 0:
+		_draw_bar_back_shelf_top(x, color)
+	elif int(obj["x"]) == 0:
+		_draw_bar_back_shelf_left(y, color)
+
 func _draw_modular_bar_segment(obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
 	var y: float = float(obj["y"])
 	var color: Color = obj["color"]
 
-	# Locked art rule: every placed bar segment uses this exact same 1x1 counter design.
-	_draw_iso_box(
-		x,
-		y,
-		1.0,
-		1.0,
-		34.0,
-		color.lightened(0.08),
-		color.darkened(0.34),
-		color.darkened(0.18)
-	)
-
-	# One continuous neon band across every repeated module.
+	# Placement remains 1x1, but the visible counter is slimmer so it reads like
+	# a service counter instead of a full tile-sized cube.
 	if int(obj["y"]) == 0:
-		var front_a: Vector2 = _iso(x, y + 1.0) - Vector2(0, 22)
-		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
-		draw_line(front_a, front_b, Color("#2de3ff"), 2.8)
-		draw_line(front_a - Vector2(0, 4), front_b - Vector2(0, 4), Color("#c64cff"), 1.8)
-		_draw_bar_back_shelf_top(x, color)
+		_draw_iso_box(
+			x,
+			y + 0.36,
+			1.0,
+			0.64,
+			27.0,
+			color.lightened(0.10),
+			color.darkened(0.38),
+			color.darkened(0.22)
+		)
+
+		var front_a: Vector2 = _iso(x, y + 1.0) - Vector2(0, 17)
+		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 17)
+		draw_line(front_a, front_b, Color("#2de3ff"), 2.5)
+		draw_line(front_a - Vector2(0, 4), front_b - Vector2(0, 4), Color("#c64cff"), 1.5)
+
 	elif int(obj["x"]) == 0:
-		var front_a: Vector2 = _iso(x + 1.0, y) - Vector2(0, 22)
-		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
-		draw_line(front_a, front_b, Color("#2de3ff"), 2.8)
-		draw_line(front_a - Vector2(0, 4), front_b - Vector2(0, 4), Color("#c64cff"), 1.8)
-		_draw_bar_back_shelf_left(y, color)
+		_draw_iso_box(
+			x + 0.36,
+			y,
+			0.64,
+			1.0,
+			27.0,
+			color.lightened(0.10),
+			color.darkened(0.38),
+			color.darkened(0.22)
+		)
+
+		var front_a: Vector2 = _iso(x + 1.0, y) - Vector2(0, 17)
+		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 17)
+		draw_line(front_a, front_b, Color("#2de3ff"), 2.5)
+		draw_line(front_a - Vector2(0, 4), front_b - Vector2(0, 4), Color("#c64cff"), 1.5)
 
 func _draw_bar_back_shelf_top(x: float, color: Color) -> void:
 	var a: Vector2 = _iso(x, 0.0)
 	var b: Vector2 = _iso(x + 1.0, 0.0)
-	var shelf_h: float = 66.0
+	var shelf_h: float = 54.0
 	var panel: PackedVector2Array = PackedVector2Array([
-		a - Vector2(0, 6),
-		b - Vector2(0, 6),
+		a - Vector2(0, 4),
+		b - Vector2(0, 4),
 		b - Vector2(0, shelf_h),
 		a - Vector2(0, shelf_h)
 	])
-	draw_polygon(panel, PackedColorArray([color.darkened(0.48)]))
-	draw_line(a - Vector2(0, 28), b - Vector2(0, 28), Color("#b54cff"), 2.0)
-	draw_line(a - Vector2(0, 52), b - Vector2(0, 52), Color("#2de3ff"), 1.5)
 
-	var bottle_center: Vector2 = (a + b) * 0.5 - Vector2(0, 43)
-	draw_circle(bottle_center - Vector2(8, 0), 3.0, Color("#ff8d45"))
-	draw_circle(bottle_center, 3.0, Color("#cf55ff"))
-	draw_circle(bottle_center + Vector2(8, 0), 3.0, Color("#55d9ff"))
+	draw_polygon(panel, PackedColorArray([color.darkened(0.54)]))
+	draw_line(a - Vector2(0, 22), b - Vector2(0, 22), Color("#a942d6"), 1.7)
+	draw_line(a - Vector2(0, 42), b - Vector2(0, 42), Color("#2bcbe8"), 1.2)
+
+	var bottle_center: Vector2 = (a + b) * 0.5 - Vector2(0, 34)
+	draw_circle(bottle_center - Vector2(7, 0), 2.5, Color("#ff8d45"))
+	draw_circle(bottle_center, 2.5, Color("#cf55ff"))
+	draw_circle(bottle_center + Vector2(7, 0), 2.5, Color("#55d9ff"))
 
 func _draw_bar_back_shelf_left(y: float, color: Color) -> void:
 	var a: Vector2 = _iso(0.0, y)
 	var b: Vector2 = _iso(0.0, y + 1.0)
-	var shelf_h: float = 66.0
+	var shelf_h: float = 54.0
 	var panel: PackedVector2Array = PackedVector2Array([
-		a - Vector2(0, 6),
-		b - Vector2(0, 6),
+		a - Vector2(0, 4),
+		b - Vector2(0, 4),
 		b - Vector2(0, shelf_h),
 		a - Vector2(0, shelf_h)
 	])
-	draw_polygon(panel, PackedColorArray([color.darkened(0.48)]))
-	draw_line(a - Vector2(0, 28), b - Vector2(0, 28), Color("#b54cff"), 2.0)
-	draw_line(a - Vector2(0, 52), b - Vector2(0, 52), Color("#2de3ff"), 1.5)
 
-	var bottle_center: Vector2 = (a + b) * 0.5 - Vector2(0, 43)
-	draw_circle(bottle_center - Vector2(6, 2), 3.0, Color("#ff8d45"))
-	draw_circle(bottle_center, 3.0, Color("#cf55ff"))
-	draw_circle(bottle_center + Vector2(6, 2), 3.0, Color("#55d9ff"))
+	draw_polygon(panel, PackedColorArray([color.darkened(0.54)]))
+	draw_line(a - Vector2(0, 22), b - Vector2(0, 22), Color("#a942d6"), 1.7)
+	draw_line(a - Vector2(0, 42), b - Vector2(0, 42), Color("#2bcbe8"), 1.2)
+
+	var bottle_center: Vector2 = (a + b) * 0.5 - Vector2(0, 34)
+	draw_circle(bottle_center - Vector2(5, 2), 2.5, Color("#ff8d45"))
+	draw_circle(bottle_center, 2.5, Color("#cf55ff"))
+	draw_circle(bottle_center + Vector2(5, 2), 2.5, Color("#55d9ff"))
 
 func _draw_placement_preview() -> void:
 	if current_item.is_empty() or hover_tile.x < 0 or hover_tile.y < 0:
