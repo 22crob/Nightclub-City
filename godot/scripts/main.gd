@@ -1319,7 +1319,9 @@ func _update_stats_hud() -> void:
 	if current_level == 1:
 		stats_label.text = "$ " + str(cash) + "        XP  " + str(xp) + " / " + str(LEVEL_2_XP) + "\nNext unlocks at Level 2"
 	elif current_level == 2:
-		stats_label.text = "$ " + str(cash) + "        XP  " + str(xp) + " / " + str(LEVEL_3_XP) + "\nNext unlocks at Level 3"
+		var level_two_progress: int = xp - LEVEL_2_XP
+		var level_two_goal: int = LEVEL_3_XP - LEVEL_2_XP
+		stats_label.text = "$ " + str(cash) + "        XP  " + str(level_two_progress) + " / " + str(level_two_goal) + "\nNext unlocks at Level 3"
 	else:
 		stats_label.text = "$ " + str(cash) + "        XP  " + str(xp) + "  •  LEVEL 3\nProgression test cap reached"
 
