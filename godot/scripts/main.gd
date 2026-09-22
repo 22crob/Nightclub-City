@@ -441,7 +441,7 @@ func _cancel_placement() -> void:
 func _world_to_tile(world_pos: Vector2) -> Vector2i:
 	var tile_x: float = world_pos.y / TILE_H + world_pos.x / TILE_W
 	var tile_y: float = world_pos.y / TILE_H - world_pos.x / TILE_W
-	return Vector2i(floori(tile_x), floori(tile_y))
+	return Vector2i(int(floor(tile_x)), int(floor(tile_y)))
 
 func _can_place_current(tile: Vector2i) -> bool:
 	if current_item.is_empty():
@@ -492,7 +492,7 @@ func _draw_build_item(obj: Dictionary) -> void:
 		draw_line(a, b, Color("#2de3ff"), 2.5)
 	elif kind == "seat":
 		_draw_iso_box(x, y, width, depth, 20.0, color.lightened(0.10), color.darkened(0.30), color.darkened(0.15))
-		_draw_iso_box(x + 0.08, y, maxf(0.75, width - 0.16), 0.28, 34.0, color.lightened(0.04), color.darkened(0.34), color.darkened(0.20))
+		_draw_iso_box(x + 0.08, y, width - 0.16, 0.28, 34.0, color.lightened(0.04), color.darkened(0.34), color.darkened(0.20))
 	elif kind == "dance":
 		for dy in range(int(depth)):
 			for dx in range(int(width)):
