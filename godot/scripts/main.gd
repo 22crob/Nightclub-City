@@ -100,7 +100,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Single Bar Wall Alignment v1 loaded.")
+	print("Nightclub City Isometric Bar Asset Calibration v2 loaded.")
 	_load_bar_sprite_assets()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
@@ -950,7 +950,7 @@ func _draw_modular_bar_shelf(obj: Dictionary) -> void:
 			var top_anchor: Vector2 = _iso(x + 0.5, 0.0)
 			draw_texture_rect(
 				bar_shelf_texture,
-				Rect2(top_anchor + Vector2(-21, -63), Vector2(42, 63)),
+				Rect2(top_anchor + Vector2(-30, -72), Vector2(60, 78)),
 				false
 			)
 			return
@@ -984,10 +984,10 @@ func _draw_modular_bar_segment(obj: Dictionary) -> void:
 		if bar_front_texture != null:
 			# Keep the customer counter separate from the wall shelf so the
 			# bartender lane remains obvious.
-			var top_counter_anchor: Vector2 = _iso(x + 0.5, y + 1.42)
+			var top_counter_anchor: Vector2 = _iso(x + 0.5, y + 1.10)
 			draw_texture_rect(
 				bar_front_texture,
-				Rect2(top_counter_anchor + Vector2(-22, -55), Vector2(44, 55)),
+				Rect2(top_counter_anchor + Vector2(-34, -60), Vector2(68, 66)),
 				false
 			)
 			return
