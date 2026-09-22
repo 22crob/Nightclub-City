@@ -12,37 +12,51 @@ The main game scene is unchanged.
 
 - Isometric tile: 72 x 36 px
 - Wall height: 108 px
-- Master bar footprint: 1 x 1 tile
+- Master bar footprint: 1 x 3 tiles
+- Module width: 1 tile along the wall
+- Module depth: 3 tiles outward from the wall
 - Bar system: one universal repeatable module
-- Six identical copies are spawned on consecutive wall tiles
+- Six identical copies are spawned on consecutive wall columns
+
+## Module layout
+
+Each 1 x 3 module is divided by function:
+
+1. Rear tile: back shelf / bottle storage
+2. Middle tile: bartender service aisle
+3. Front tile: customer-facing bar counter
+
+The customer interaction point sits just outside the front counter.
 
 ## Debug markers
 
-Each 1 x 1 module owns:
+Each module owns:
 
-- Yellow: placement anchor
-- Green: one bartender position
-- Pink: one customer interaction position
+- Yellow: placement anchor at the wall-side origin
+- Green: bartender position centered in the service aisle
+- Pink: customer interaction point outside the front counter
 
 ## Blender artwork
 
-The test room now displays `assets/bar/bar_module_01.png`, an original Blender
-render with a dark counter, bottle shelves, and cyan/violet trim. The 144x144
-transparent canvas contains a 72x36 ground footprint. Its ground center is
-(72,112); drawing at (-72,-94) aligns it to the existing tile center (0,18).
-One module step remains (36,18). Placement and interaction markers are unchanged.
-The main club still uses its existing artwork; this scene is the calibration gate.
+The test room displays `assets/bar/bar_module_01.png`, the current Blender render.
+The image remains under calibration while the new 1 x 3 logical contract is validated.
+Do not redesign the Blender model yet; first confirm that its rear shelf, open service
+space, and front counter can be aligned to these three depth rows.
+
+The main nightclub scene is unchanged.
 
 ## Review checklist
 
-Review the Blender artwork against these criteria before adopting it in the main club:
+Before adopting the asset in the main club:
 
-1. Six identical 1 x 1 copies align continuously.
-2. Neighboring copies do not visually overlap.
-3. There are no unintended gaps between modules.
-4. The back of each module fits the wall line.
-5. Visible geometry stays inside its 1 x 1 footprint except vertically upward.
-6. Bartender and customer markers remain outside solid furniture.
-7. Final artwork can replace the proxy without changing the logical footprint or interaction markers.
+1. Six modules repeat cleanly along the wall.
+2. Rear shelves align as one continuous back-bar run.
+3. Front counters align as one continuous customer-facing run.
+4. The middle row remains visibly open for bartender movement.
+5. Neighboring modules do not overlap.
+6. There are no unintended gaps between matching module edges.
+7. Bartender markers sit in the open service aisle.
+8. Customer markers remain outside the front counter.
+9. The Blender render can be calibrated to the 1 x 3 footprint without changing gameplay geometry.
 
-Once approved, this universal 1 x 1 module becomes the reference implementation for all modular bars.
+Once approved, this universal 1 x 3 module becomes the reference implementation for modular bars.

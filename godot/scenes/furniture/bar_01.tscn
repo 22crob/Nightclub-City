@@ -9,7 +9,7 @@ script = ExtResource("1_bar")
 position = Vector2(0, 0)
 
 [node name="BartenderPoint" type="Marker2D" parent="."]
-position = Vector2(2, 16)
+position = Vector2(-36, 36)
 
 [node name="CustomerPoint" type="Marker2D" parent="."]
-position = Vector2(-25, 32)
+position = Vector2(-108, 72)

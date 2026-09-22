@@ -5,7 +5,7 @@ const BAR_TEXTURE: Texture2D = preload("res://assets/bar/bar_module_01.png")
 const TILE_W: float = 72.0
 const TILE_H: float = 36.0
 const FOOTPRINT_W: int = 1
-const FOOTPRINT_D: int = 1
+const FOOTPRINT_D: int = 3
 
 @export var show_debug_markers: bool = true
 
@@ -31,14 +31,21 @@ func _tile_points(x: float, y: float, width: float, depth: float) -> PackedVecto
 	])
 
 func _draw() -> void:
-	# Exact logical footprint: one production 72 x 36 isometric tile.
-	var footprint: PackedVector2Array = _tile_points(0.0, 0.0, 1.0, 1.0)
-	draw_polygon(footprint, PackedColorArray([Color(0.20, 0.75, 1.0, 0.10)]))
+	# Production footprint: 1 tile wide x 3 tiles deep.
+	# Tile 1 = rear shelf, Tile 2 = bartender/service aisle, Tile 3 = front counter.
+	var footprint: PackedVector2Array = _tile_points(0.0, 0.0, 1.0, 3.0)
+	draw_polygon(footprint, PackedColorArray([Color(0.20, 0.75, 1.0, 0.08)]))
 	for i in range(footprint.size()):
-		draw_line(footprint[i], footprint[(i + 1) % footprint.size()], Color(0.25, 0.85, 1.0, 0.75), 1.5)
+		draw_line(footprint[i], footprint[(i + 1) % footprint.size()], Color(0.25, 0.85, 1.0, 0.70), 1.5)
 
-	# PNG ground center is (72,112); the existing tile center is (0,18).
-	# Keep the back-corner PlacementAnchor and all interaction markers unchanged.
+	# Highlight the service aisle (middle tile) so bartender clearance is obvious.
+	var service_tile: PackedVector2Array = _tile_points(0.0, 1.0, 1.0, 1.0)
+	draw_polygon(service_tile, PackedColorArray([Color(0.35, 0.95, 0.55, 0.08)]))
+	for i in range(service_tile.size()):
+		draw_line(service_tile[i], service_tile[(i + 1) % service_tile.size()], Color(0.35, 0.95, 0.55, 0.45), 1.0)
+
+	# Current Blender render under calibration. Keep its artwork unchanged while
+	# the logical 1x3 contract is validated in the test room.
 	draw_texture(BAR_TEXTURE, Vector2(-72.0, -94.0))
 
 	if show_debug_markers:

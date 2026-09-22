@@ -12,7 +12,7 @@ bar_scene = ExtResource("2_bar")
 [node name="Title" type="Label" parent="HUD"]
 offset_left = 22.0
 offset_top = 18.0
-offset_right = 560.0
+offset_right = 620.0
 offset_bottom = 48.0
 theme_override_colors/font_color = Color(0.97, 0.93, 1, 1)
 theme_override_font_sizes/font_size = 22
@@ -21,17 +21,17 @@ text = "ASSET TEST ROOM — UNIVERSAL BAR MODULE 01"
 [node name="Subtitle" type="Label" parent="HUD"]
 offset_left = 23.0
 offset_top = 52.0
-offset_right = 760.0
+offset_right = 860.0
 offset_bottom = 82.0
 theme_override_colors/font_color = Color(0.65, 0.73, 0.9, 1)
 theme_override_font_sizes/font_size = 13
-text = "72x36 production grid • 1x1 footprint per module • six identical copies touching edge-to-edge"
+text = "72x36 production grid • 1x3 footprint per module • rear shelf / service aisle / front counter"
 
 [node name="Status" type="Label" parent="HUD"]
 offset_left = 22.0
 offset_top = 646.0
-offset_right = 820.0
+offset_right = 920.0
 offset_bottom = 700.0
 theme_override_colors/font_color = Color(0.82, 0.86, 0.96, 1)
 theme_override_font_sizes/font_size = 12
-text = "YELLOW  Placement Anchor      GREEN  Bartender Point      PINK  Customer Point\nPASS = repeatable 1x1 modules, no gaps/overlap, correct wall fit, markers outside solid geometry"
+text = "YELLOW  Placement Anchor      GREEN  Bartender Point      PINK  Customer Point\nPASS = repeatable 1x3 modules, clear service aisle, clean seams, correct wall fit"
