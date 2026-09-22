@@ -38,6 +38,10 @@ var placed_objects: Array = []
 var selected_object_index: int = -1
 var moving_object_index: int = -1
 const SAVE_PATH: String = "user://club_layout.json"
+const NPC_SPEED: float = 0.95
+
+var npc_agents: Array = []
+var npc_cycle_count: int = 0
 
 var item_catalog: Dictionary = {
 	"Bars": [
@@ -65,19 +69,6 @@ var item_catalog: Dictionary = {
 	]
 }
 
-var npc_positions: Array[Vector2] = [
-	Vector2(5.3, 5.3),
-	Vector2(6.4, 4.8),
-	Vector2(7.4, 5.5),
-	Vector2(8.2, 4.9),
-	Vector2(6.0, 6.6),
-	Vector2(7.6, 6.7),
-	Vector2(2.9, 5.2),
-	Vector2(3.1, 6.8),
-	Vector2(10.7, 4.9),
-	Vector2(9.5, 8.1)
-]
-
 var npc_colors: Array[Color] = [
 	Color("#ff4fa3"),
 	Color("#51d9ff"),
@@ -92,7 +83,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Design Mode v1 loaded.")
+	print("Nightclub City NPC Behavior v1 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -110,11 +101,13 @@ func _ready() -> void:
 	delete_button.pressed.connect(_delete_selected_object)
 	done_button.pressed.connect(_deselect_object)
 	_load_layout()
+	_initialize_npcs()
 	_set_category("Bars")
 	queue_redraw()
 
 func _process(delta: float) -> void:
 	anim_time += delta
+	_update_npcs(delta)
 	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -379,10 +372,24 @@ func _draw_round_table(x: float, y: float, top_color: Color) -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_npcs() -> void:
-	for i in range(npc_positions.size()):
-		var pos: Vector2 = _iso(npc_positions[i].x, npc_positions[i].y)
-		var bob: float = sin(anim_time * 2.6 + float(i) * 0.7) * 1.6
-		_draw_avatar(pos - Vector2(0, bob), npc_colors[i], i < 6)
+	for i in range(npc_agents.size()):
+		var npc: Dictionary = npc_agents[i]
+		if float(npc["spawn_delay"]) > 0.0:
+			continue
+
+		var tile_pos: Vector2 = npc["pos"]
+		var screen_pos: Vector2 = _iso(tile_pos.x, tile_pos.y)
+		var state: String = str(npc["state"])
+		var activity: String = str(npc["activity"])
+		var dancing: bool = state == "activity" and activity == "dance"
+		var bob: float = 0.0
+
+		if state == "entering" or state == "walking" or state == "leaving":
+			bob = sin(anim_time * 8.0 + float(i)) * 1.2
+		elif dancing:
+			bob = sin(anim_time * 3.0 + float(i) * 0.7) * 1.8
+
+		_draw_avatar(screen_pos - Vector2(0, bob), npc["color"], dancing)
 
 func _draw_avatar(pos: Vector2, shirt: Color, dancing: bool) -> void:
 	var skin: Color = Color("#e0aa84")
@@ -743,3 +750,113 @@ func _load_layout() -> void:
 			"y": int(raw_obj.get("y", 0)),
 			"color": restored_color
 		})
+
+
+func _initialize_npcs() -> void:
+	npc_agents.clear()
+	for i in range(npc_colors.size()):
+		var activity: String = _activity_for_index(i)
+		var agent: Dictionary = {
+			"pos": Vector2(11.0, 0.55),
+			"target": Vector2(10.6, 1.65),
+			"state": "waiting",
+			"activity": activity,
+			"activity_target": _activity_target(activity, i),
+			"timer": 0.0,
+			"spawn_delay": float(i) * 0.75,
+			"color": npc_colors[i]
+		}
+		npc_agents.append(agent)
+
+func _activity_for_index(index: int) -> String:
+	var slot: int = index % 3
+	if slot == 0:
+		return "dance"
+	if slot == 1:
+		return "bar"
+	return "lounge"
+
+func _activity_target(activity: String, index: int) -> Vector2:
+	if activity == "dance":
+		var dance_points: Array[Vector2] = [
+			Vector2(5.7, 5.0),
+			Vector2(6.8, 5.3),
+			Vector2(8.1, 5.1),
+			Vector2(6.1, 6.5),
+			Vector2(7.6, 6.4)
+		]
+		return dance_points[index % dance_points.size()]
+
+	if activity == "bar":
+		var bar_points: Array[Vector2] = [
+			Vector2(2.55, 3.8),
+			Vector2(2.55, 4.9),
+			Vector2(2.55, 6.0),
+			Vector2(2.55, 7.0)
+		]
+		return bar_points[index % bar_points.size()]
+
+	var lounge_points: Array[Vector2] = [
+		Vector2(9.7, 3.9),
+		Vector2(9.8, 6.7),
+		Vector2(4.0, 8.1)
+	]
+	return lounge_points[index % lounge_points.size()]
+
+func _update_npcs(delta: float) -> void:
+	for i in range(npc_agents.size()):
+		var npc: Dictionary = npc_agents[i]
+		var spawn_delay: float = float(npc["spawn_delay"])
+
+		if spawn_delay > 0.0:
+			spawn_delay -= delta
+			npc["spawn_delay"] = spawn_delay
+			if spawn_delay <= 0.0:
+				npc["state"] = "entering"
+				npc["pos"] = Vector2(11.0, 0.55)
+				npc["target"] = Vector2(10.6, 1.65)
+			npc_agents[i] = npc
+			continue
+
+		var state: String = str(npc["state"])
+
+		if state == "entering":
+			if _move_agent_toward(npc, delta):
+				npc["state"] = "walking"
+				npc["target"] = npc["activity_target"]
+
+		elif state == "walking":
+			if _move_agent_toward(npc, delta):
+				npc["state"] = "activity"
+				npc["timer"] = 4.5 + float(i % 4) * 1.1
+
+		elif state == "activity":
+			npc["timer"] = float(npc["timer"]) - delta
+			if float(npc["timer"]) <= 0.0:
+				npc["state"] = "leaving"
+				npc["target"] = Vector2(10.6, 1.65)
+
+		elif state == "leaving":
+			if _move_agent_toward(npc, delta):
+				npc_cycle_count += 1
+				var next_activity: String = _activity_for_index(i + npc_cycle_count)
+				npc["activity"] = next_activity
+				npc["activity_target"] = _activity_target(next_activity, i + npc_cycle_count)
+				npc["state"] = "waiting"
+				npc["pos"] = Vector2(11.0, 0.55)
+				npc["target"] = Vector2(10.6, 1.65)
+				npc["spawn_delay"] = 2.0 + float(i % 3) * 0.65
+
+		npc_agents[i] = npc
+
+func _move_agent_toward(npc: Dictionary, delta: float) -> bool:
+	var pos: Vector2 = npc["pos"]
+	var target: Vector2 = npc["target"]
+	var step: float = NPC_SPEED * delta
+
+	if pos.distance_to(target) <= step:
+		npc["pos"] = target
+		return true
+
+	npc["pos"] = pos.move_toward(target, step)
+	return false
