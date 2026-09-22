@@ -455,6 +455,8 @@ func _select_item(index: int) -> void:
 	var items: Array = item_catalog[selected_category]
 	if index < 0 or index >= items.size():
 		return
+	moving_object_index = -1
+	_deselect_object()
 	current_item = items[index].duplicate(true)
 	hover_tile = _world_to_tile(get_global_mouse_position())
 	design_hint.text = str(current_item["name"]) + " selected • click floor to place • right-click/Esc cancels"
@@ -462,6 +464,7 @@ func _select_item(index: int) -> void:
 
 func _cancel_placement() -> void:
 	current_item = {}
+	moving_object_index = -1
 	hover_tile = Vector2i(-1, -1)
 	if design_drawer.visible:
 		design_hint.text = selected_category + " selected • choose an item to place"
