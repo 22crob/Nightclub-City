@@ -99,7 +99,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Build Menu UI v1 loaded.")
+	print("Nightclub City Build Menu Polish v2 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -484,8 +484,21 @@ func _set_category(category: String) -> void:
 	walls_button.button_pressed = category == "Walls"
 	decor_button.button_pressed = category == "Decor"
 
+	var category_buttons: Array[Button] = [
+		bars_button,
+		seating_button,
+		dance_button,
+		walls_button,
+		decor_button
+	]
+	for button in category_buttons:
+		if button.button_pressed:
+			button.modulate = Color(1.0, 1.0, 1.0, 1.0)
+		else:
+			button.modulate = Color(0.72, 0.76, 0.88, 0.82)
+
 	_refresh_design_buttons()
-	design_hint.text = category + " • choose an unlocked item"
+	design_hint.text = category + "  •  select an item"
 
 func _refresh_design_buttons() -> void:
 	var items: Array = item_catalog[selected_category]
@@ -503,9 +516,9 @@ func _refresh_design_buttons() -> void:
 		buttons[i].disabled = not unlocked
 
 		if unlocked:
-			buttons[i].text = str(item["name"]) + "\nAvailable"
+			buttons[i].text = str(item["name"]) + "\nREADY"
 		else:
-			buttons[i].text = "LOCKED\nUnlocks at Level " + str(unlock_level)
+			buttons[i].text = str(item["name"]) + "\nLOCKED  •  LV " + str(unlock_level)
 
 func _select_item(index: int) -> void:
 	var items: Array = item_catalog[selected_category]
@@ -530,7 +543,7 @@ func _cancel_placement() -> void:
 	moving_object_index = -1
 	hover_tile = Vector2i(-1, -1)
 	if design_drawer.visible:
-		design_hint.text = selected_category + " • choose an item to place"
+		design_hint.text = selected_category + "  •  select an item"
 	queue_redraw()
 
 func _world_to_tile(world_pos: Vector2) -> Vector2i:
@@ -1330,7 +1343,7 @@ func _update_stats_hud() -> void:
 		var level_two_goal: int = LEVEL_3_XP - LEVEL_2_XP
 		stats_label.text = "$ " + str(cash) + "        XP  " + str(level_two_progress) + " / " + str(level_two_goal) + "\nNext unlocks at Level 3"
 	else:
-		stats_label.text = "$ " + str(cash) + "        XP  " + str(xp) + "  •  LEVEL 3\nProgression test cap reached"
+		stats_label.text = "$ " + str(cash) + "        XP  " + str(xp) + "  •  LEVEL 3\nAll current unlocks earned"
 
 func _level_for_xp(total_xp: int) -> int:
 	if total_xp >= LEVEL_3_XP:
