@@ -164,10 +164,9 @@ func _prepare_single_bar_calibration() -> void:
 		if str(obj["kind"]) == "bar" and str(obj["id"]) == "bar_segment":
 			if first_bar.is_empty():
 				first_bar = obj.duplicate(true)
-		else:
 			continue
-		else:
-			non_bar_objects.append(obj)
+
+		non_bar_objects.append(obj)
 
 	if first_bar.is_empty():
 		return
