@@ -61,6 +61,10 @@ var level_up_timer: float = 0.0
 var bar_front_texture: Texture2D
 var bar_shelf_texture: Texture2D
 var bar_module_texture: Texture2D
+var bar_single_texture: Texture2D
+var bar_left_end_texture: Texture2D
+var bar_middle_texture: Texture2D
+var bar_right_end_texture: Texture2D
 const SINGLE_BAR_CALIBRATION: bool = false
 const BAR_TOP_WALL_ONLY: bool = true
 
@@ -102,7 +106,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Multi-Bar Connection Test v1 loaded.")
+	print("Nightclub City Run-Aware Bar Sprites v1 loaded.")
 	_load_bar_sprite_assets()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
@@ -131,6 +135,10 @@ func _ready() -> void:
 
 func _load_bar_sprite_assets() -> void:
 	bar_module_texture = _texture_from_base64_file("res://assets/bar/starter_bar_module_production.png.b64")
+	bar_single_texture = _texture_from_base64_file("res://assets/bar/starter_bar_single.png.b64")
+	bar_left_end_texture = _texture_from_base64_file("res://assets/bar/starter_bar_left_end.png.b64")
+	bar_middle_texture = _texture_from_base64_file("res://assets/bar/starter_bar_middle.png.b64")
+	bar_right_end_texture = _texture_from_base64_file("res://assets/bar/starter_bar_right_end.png.b64")
 	bar_front_texture = _texture_from_base64_file("res://assets/bar/front_counter_module.png.b64")
 	bar_shelf_texture = _texture_from_base64_file("res://assets/bar/back_shelf_module.png.b64")
 
@@ -894,7 +902,23 @@ func _place_current_item(tile: Vector2i) -> void:
 	queue_redraw()
 
 func _draw_placed_objects() -> void:
+	var top_wall_bars: Array = []
+	var other_objects: Array = []
+
 	for obj in placed_objects:
+		if str(obj["kind"]) == "bar" and str(obj["id"]) == "bar_segment" and int(obj["y"]) == 0:
+			top_wall_bars.append(obj)
+		else:
+			other_objects.append(obj)
+
+	# Draw the wall run in isometric depth order, not purchase order.
+	top_wall_bars.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a["x"]) < int(b["x"])
+	)
+
+	for obj in other_objects:
+		_draw_build_item(obj)
+	for obj in top_wall_bars:
 		_draw_build_item(obj)
 
 func _draw_build_item(obj: Dictionary) -> void:
@@ -944,24 +968,57 @@ func _draw_build_item(obj: Dictionary) -> void:
 		var glow_pos: Vector2 = _iso(x + 0.5, y + 0.5) - Vector2(0, 62)
 		draw_circle(glow_pos, 8.0, color)
 
+func _bar_run_texture(obj: Dictionary) -> Texture2D:
+	var tile: Vector2i = Vector2i(int(obj["x"]), int(obj["y"]))
+
+	if tile.y != 0:
+		return bar_module_texture
+
+	var has_left: bool = _has_bar_segment_at(Vector2i(tile.x - 1, 0))
+	var has_right: bool = _has_bar_segment_at(Vector2i(tile.x + 1, 0))
+
+	if not has_left and not has_right:
+		return bar_single_texture
+	if not has_left and has_right:
+		return bar_left_end_texture
+	if has_left and has_right:
+		return bar_middle_texture
+	return bar_right_end_texture
+
+func _has_bar_segment_at(tile: Vector2i) -> bool:
+	for placed in placed_objects:
+		if str(placed["kind"]) != "bar" or str(placed["id"]) != "bar_segment":
+			continue
+		if int(placed["x"]) == tile.x and int(placed["y"]) == tile.y:
+			return true
+	return false
+
 func _draw_production_bar_module(obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
 	var y: float = float(obj["y"])
 
-	# Calibration uses the top wall only. The production sprite was authored
-	# directly against the game's 72x36 projection:
-	# local wall edge (64,118) -> (100,136) == one game wall edge (36,18).
-	# Draw 1:1 with no scaling, stretching, shearing, or guessed offsets.
-	if int(obj["y"]) == 0 and bar_module_texture != null:
-		var target_wall_anchor: Vector2 = _iso(x, 0.0)
-		var local_wall_anchor: Vector2 = Vector2(64.0, 118.0)
+	if int(obj["y"]) == 0:
+		var texture: Texture2D = _bar_run_texture(obj)
+		if texture != null:
+			# Every run-aware sprite shares the exact same local wall anchor.
+			# The only difference is whether its left/right seam has end framing.
+			var target_wall_anchor: Vector2 = _iso(x, 0.0)
+			var local_wall_anchor: Vector2 = Vector2(72.0, 120.0)
+			draw_texture(
+				texture,
+				target_wall_anchor - local_wall_anchor
+			)
+			return
+
+	# Safe fallback if one of the run textures fails to load.
+	if bar_module_texture != null:
+		var fallback_anchor: Vector2 = _iso(x, y)
 		draw_texture(
 			bar_module_texture,
-			target_wall_anchor - local_wall_anchor
+			fallback_anchor - Vector2(64.0, 118.0)
 		)
 		return
 
-	# Safe fallback if the production texture fails to load.
 	_draw_modular_bar_shelf(obj)
 	_draw_modular_bar_segment(obj)
 
