@@ -58,6 +58,8 @@ var xp: int = 0
 var completed_activities: int = 0
 var current_level: int = 1
 var level_up_timer: float = 0.0
+var bar_front_texture: Texture2D
+var bar_shelf_texture: Texture2D
 
 var item_catalog: Dictionary = {
 	"Bars": [
@@ -97,7 +99,8 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Skinny Bar Proportions v1 loaded.")
+	print("Nightclub City Real Bar Sprites v1 loaded.")
+	_load_bar_sprite_assets()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -121,6 +124,32 @@ func _ready() -> void:
 	_update_stats_hud()
 	_set_category("Bars")
 	queue_redraw()
+
+func _load_bar_sprite_assets() -> void:
+	bar_front_texture = _texture_from_base64_file("res://assets/bar/front_counter_module.png.b64")
+	bar_shelf_texture = _texture_from_base64_file("res://assets/bar/back_shelf_module.png.b64")
+
+func _texture_from_base64_file(path: String) -> Texture2D:
+	if not FileAccess.file_exists(path):
+		return null
+
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return null
+
+	var encoded: String = file.get_as_text().strip_edges()
+	file.close()
+
+	var bytes: PackedByteArray = Marshalls.base64_to_raw(encoded)
+	if bytes.is_empty():
+		return null
+
+	var image: Image = Image.new()
+	var load_result: Error = image.load_png_from_buffer(bytes)
+	if load_result != OK:
+		return null
+
+	return ImageTexture.create_from_image(image)
 
 func _process(delta: float) -> void:
 	anim_time += delta
@@ -842,6 +871,26 @@ func _draw_modular_bar_shelf(obj: Dictionary) -> void:
 	var y: float = float(obj["y"])
 	var color: Color = obj["color"]
 
+	if bar_shelf_texture != null:
+		if int(obj["y"]) == 0:
+			var top_anchor: Vector2 = _iso(x + 0.5, 0.0)
+			draw_texture_rect(
+				bar_shelf_texture,
+				Rect2(top_anchor + Vector2(-31, -82), Vector2(62, 82)),
+				false
+			)
+			return
+		elif int(obj["x"]) == 0:
+			var left_anchor: Vector2 = _iso(0.0, y + 0.5)
+			draw_set_transform(left_anchor, 0.0, Vector2(-1.0, 1.0))
+			draw_texture_rect(
+				bar_shelf_texture,
+				Rect2(Vector2(-31, -82), Vector2(62, 82)),
+				false
+			)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			return
+
 	if int(obj["y"]) == 0:
 		_draw_bar_back_shelf_top(x, color)
 	elif int(obj["x"]) == 0:
@@ -852,15 +901,20 @@ func _draw_modular_bar_segment(obj: Dictionary) -> void:
 	var y: float = float(obj["y"])
 	var color: Color = obj["color"]
 
-	# Placement remains 1x1, but the visible counter is slimmer so it reads like
-	# a service counter instead of a full tile-sized cube.
 	if int(obj["y"]) == 0:
-		# Back shelf stays flush to the wall. This darker strip is the bartender
-		# workspace between the shelf and the customer-facing counter.
 		draw_polygon(
 			_tile_points(x, y + 0.08, 1.0, 0.58),
 			PackedColorArray([Color(0.055, 0.045, 0.075, 0.72)])
 		)
+
+		if bar_front_texture != null:
+			var top_counter_anchor: Vector2 = _iso(x + 0.5, y + 1.0)
+			draw_texture_rect(
+				bar_front_texture,
+				Rect2(top_counter_anchor + Vector2(-33, -79), Vector2(66, 79)),
+				false
+			)
+			return
 
 		_draw_iso_box(
 			x,
@@ -879,11 +933,21 @@ func _draw_modular_bar_segment(obj: Dictionary) -> void:
 		draw_line(front_a - Vector2(0, 4), front_b - Vector2(0, 4), Color("#c64cff"), 1.5)
 
 	elif int(obj["x"]) == 0:
-		# Same bartender workspace when the bar runs along the left wall.
 		draw_polygon(
 			_tile_points(x + 0.08, y, 0.58, 1.0),
 			PackedColorArray([Color(0.055, 0.045, 0.075, 0.72)])
 		)
+
+		if bar_front_texture != null:
+			var left_counter_anchor: Vector2 = _iso(x + 1.0, y + 0.5)
+			draw_set_transform(left_counter_anchor, 0.0, Vector2(-1.0, 1.0))
+			draw_texture_rect(
+				bar_front_texture,
+				Rect2(Vector2(-33, -79), Vector2(66, 79)),
+				false
+			)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			return
 
 		_draw_iso_box(
 			x + 0.74,
