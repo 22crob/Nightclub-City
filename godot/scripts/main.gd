@@ -777,7 +777,10 @@ func _place_current_item(tile: Vector2i) -> void:
 	current_item = {}
 	hover_tile = Vector2i(-1, -1)
 	_refresh_selection_panel()
-	design_hint.text = str(placed["name"]) + " placed • edit it above or choose another item"
+	if str(placed["kind"]) == "bar":
+		design_hint.text = "Bar segment placed • choose Bar Segment again to extend this straight run"
+	else:
+		design_hint.text = str(placed["name"]) + " placed • edit it above or choose another item"
 	_save_layout()
 	_refresh_npc_targets_after_layout_change()
 	queue_redraw()
@@ -795,7 +798,19 @@ func _draw_build_item(obj: Dictionary) -> void:
 	var color: Color = obj["color"]
 
 	if kind == "bar":
-		_draw_modular_bar_segment(obj)
+		if str(obj["id"]) == "bar_segment":
+			_draw_modular_bar_segment(obj)
+		else:
+			_draw_iso_box(
+				x,
+				y,
+				width,
+				depth,
+				38.0,
+				color.lightened(0.08),
+				color.darkened(0.34),
+				color.darkened(0.18)
+			)
 	elif kind == "seat":
 		_draw_iso_box(x, y, width, depth, 20.0, color.lightened(0.10), color.darkened(0.30), color.darkened(0.15))
 		_draw_iso_box(x + 0.08, y, width - 0.16, 0.28, 34.0, color.lightened(0.04), color.darkened(0.34), color.darkened(0.20))
