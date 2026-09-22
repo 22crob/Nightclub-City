@@ -61,7 +61,8 @@ var level_up_timer: float = 0.0
 var bar_front_texture: Texture2D
 var bar_shelf_texture: Texture2D
 var bar_module_texture: Texture2D
-const SINGLE_BAR_CALIBRATION: bool = true
+const SINGLE_BAR_CALIBRATION: bool = false
+const BAR_TOP_WALL_ONLY: bool = true
 
 var item_catalog: Dictionary = {
 	"Bars": [
@@ -101,7 +102,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Production Bar Module v1 loaded.")
+	print("Nightclub City Multi-Bar Connection Test v1 loaded.")
 	_load_bar_sprite_assets()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
@@ -778,16 +779,14 @@ func _is_bar_wall_tile(tile: Vector2i) -> bool:
 	if tile == Vector2i(0, 0):
 		return false
 
-	# Calibration uses only the top wall because the current sprite was drawn
-	# for this orientation. Multi-wall placement comes back after scale/alignment is locked.
-	if SINGLE_BAR_CALIBRATION:
+	# Connection test stays on the top wall so every repeated module uses the
+	# exact same finished production sprite and orientation.
+	if BAR_TOP_WALL_ONLY:
 		return tile.y == 0 and tile.x != 10 and tile.x != 11
 
-	# Top wall. Leave the entrance opening clear.
+	# Future multi-wall support.
 	if tile.y == 0:
 		return tile.x != 10 and tile.x != 11
-
-	# Left wall.
 	if tile.x == 0:
 		return true
 
@@ -871,15 +870,25 @@ func _place_current_item(tile: Vector2i) -> void:
 	placed["y"] = tile.y
 	placed_objects.append(placed)
 
-	selected_object_index = placed_objects.size() - 1
 	moving_object_index = -1
-	current_item = {}
-	hover_tile = Vector2i(-1, -1)
-	_refresh_selection_panel()
+
 	if str(placed["kind"]) == "bar":
-		design_hint.text = "Bar segment placed • choose Bar Segment again to extend this straight run"
+		# Stay in bar placement mode so the player can rapidly test a connected
+		# run. The next hover automatically snaps to the nearest open end.
+		selected_object_index = -1
+		selection_panel.visible = false
+		current_item = placed.duplicate(true)
+		current_item.erase("x")
+		current_item.erase("y")
+		hover_tile = _resolve_placement_tile(_world_to_tile(get_global_mouse_position()))
+		design_hint.text = "Bar segment placed • click again to extend the connected run • Esc cancels"
 	else:
+		selected_object_index = placed_objects.size() - 1
+		current_item = {}
+		hover_tile = Vector2i(-1, -1)
+		_refresh_selection_panel()
 		design_hint.text = str(placed["name"]) + " placed • edit it above or choose another item"
+
 	_save_layout()
 	_refresh_npc_targets_after_layout_change()
 	queue_redraw()
