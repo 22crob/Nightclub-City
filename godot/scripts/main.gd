@@ -917,8 +917,15 @@ func _update_npcs(delta: float) -> void:
 		npc_agents[i] = npc
 
 func _set_npc_destination(npc: Dictionary, target: Vector2) -> void:
-	npc["target"] = target
-	npc["path"] = _find_nav_path(npc["pos"], target)
+	var requested_tile: Vector2i = _nav_tile_from_position(target)
+	var safe_tile: Vector2i = _nearest_open_nav_tile(requested_tile)
+	var safe_target: Vector2 = target
+
+	if safe_tile != requested_tile:
+		safe_target = Vector2(float(safe_tile.x) + 0.5, float(safe_tile.y) + 0.5)
+
+	npc["target"] = safe_target
+	npc["path"] = _find_nav_path(npc["pos"], safe_target)
 	npc["path_index"] = 0
 
 func _move_agent_along_path(npc: Dictionary, delta: float) -> bool:
@@ -926,8 +933,9 @@ func _move_agent_along_path(npc: Dictionary, delta: float) -> bool:
 	var path_index: int = int(npc["path_index"])
 
 	if path.is_empty():
+		var current_pos: Vector2 = npc["pos"]
 		var direct_target: Vector2 = npc["target"]
-		if Vector2(npc["pos"]).distance_to(direct_target) <= 0.08:
+		if current_pos.distance_to(direct_target) <= 0.08:
 			npc["pos"] = direct_target
 			return true
 		return false
