@@ -99,7 +99,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Level Progression v1 loaded.")
+	print("Nightclub City Build Menu UI v1 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -477,8 +477,15 @@ func _close_design_drawer() -> void:
 func _set_category(category: String) -> void:
 	selected_category = category
 	_cancel_placement()
+
+	bars_button.button_pressed = category == "Bars"
+	seating_button.button_pressed = category == "Seating"
+	dance_button.button_pressed = category == "Dance"
+	walls_button.button_pressed = category == "Walls"
+	decor_button.button_pressed = category == "Decor"
+
 	_refresh_design_buttons()
-	design_hint.text = category + " selected • choose an unlocked item"
+	design_hint.text = category + " • choose an unlocked item"
 
 func _refresh_design_buttons() -> void:
 	var items: Array = item_catalog[selected_category]
@@ -496,9 +503,9 @@ func _refresh_design_buttons() -> void:
 		buttons[i].disabled = not unlocked
 
 		if unlocked:
-			buttons[i].text = str(item["name"])
+			buttons[i].text = str(item["name"]) + "\nAvailable"
 		else:
-			buttons[i].text = "LOCKED • L" + str(unlock_level)
+			buttons[i].text = "LOCKED\nUnlocks at Level " + str(unlock_level)
 
 func _select_item(index: int) -> void:
 	var items: Array = item_catalog[selected_category]
@@ -515,7 +522,7 @@ func _select_item(index: int) -> void:
 	_deselect_object()
 	current_item = item.duplicate(true)
 	hover_tile = _world_to_tile(get_global_mouse_position())
-	design_hint.text = str(current_item["name"]) + " selected • click floor to place • right-click/Esc cancels"
+	design_hint.text = str(current_item["name"]) + " • click floor to place • right-click/Esc cancels"
 	queue_redraw()
 
 func _cancel_placement() -> void:
@@ -523,7 +530,7 @@ func _cancel_placement() -> void:
 	moving_object_index = -1
 	hover_tile = Vector2i(-1, -1)
 	if design_drawer.visible:
-		design_hint.text = selected_category + " selected • choose an item to place"
+		design_hint.text = selected_category + " • choose an item to place"
 	queue_redraw()
 
 func _world_to_tile(world_pos: Vector2) -> Vector2i:
@@ -587,7 +594,7 @@ func _place_current_item(tile: Vector2i) -> void:
 	current_item = {}
 	hover_tile = Vector2i(-1, -1)
 	_refresh_selection_panel()
-	design_hint.text = str(placed["name"]) + " placed • use Move / Rotate / Delete, or choose another item"
+	design_hint.text = str(placed["name"]) + " placed • edit it above or choose another item"
 	_save_layout()
 	_refresh_npc_targets_after_layout_change()
 	queue_redraw()
