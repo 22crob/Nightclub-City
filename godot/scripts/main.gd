@@ -39,6 +39,8 @@ var selected_object_index: int = -1
 var moving_object_index: int = -1
 const SAVE_PATH: String = "user://club_layout.json"
 const NPC_SPEED: float = 0.95
+const NPC_PERSONAL_SPACE: float = 0.42
+const NO_SPOT: Vector2 = Vector2(-99.0, -99.0)
 
 var npc_agents: Array = []
 var npc_cycle_count: int = 0
@@ -378,8 +380,11 @@ func _draw_npcs() -> void:
 			continue
 
 		var tile_pos: Vector2 = npc["pos"]
-		var screen_pos: Vector2 = _iso(tile_pos.x, tile_pos.y)
 		var state: String = str(npc["state"])
+		if state == "entering" or state == "walking" or state == "leaving":
+			var lane_offset: Vector2 = npc["lane_offset"]
+			tile_pos += lane_offset
+		var screen_pos: Vector2 = _iso(tile_pos.x, tile_pos.y)
 		var activity: String = str(npc["activity"])
 		var dancing: bool = state == "activity" and activity == "dance"
 		var shirt_color: Color = npc["color"]
@@ -761,19 +766,31 @@ func _initialize_npcs() -> void:
 	npc_agents.clear()
 	for i in range(npc_colors.size()):
 		var activity: String = _activity_for_index(i)
+		var activity_target: Vector2 = _choose_activity_target(activity, i, i)
 		var agent: Dictionary = {
 			"pos": Vector2(11.0, 0.55),
 			"target": Vector2(10.6, 1.65),
 			"state": "waiting",
 			"activity": activity,
-			"activity_target": _activity_target(activity, i),
+			"activity_target": activity_target,
 			"timer": 0.0,
 			"spawn_delay": 0.15 + float(i) * 0.75,
 			"path": [],
 			"path_index": 0,
+			"reserved_spot": NO_SPOT,
+			"lane_offset": _lane_offset_for_index(i),
 			"color": npc_colors[i]
 		}
+		agent["reserved_spot"] = activity_target
 		npc_agents.append(agent)
+
+func _lane_offset_for_index(index: int) -> Vector2:
+	var lane: int = index % 3
+	if lane == 0:
+		return Vector2(-0.07, 0.04)
+	if lane == 1:
+		return Vector2(0.07, -0.04)
+	return Vector2.ZERO
 
 func _activity_for_index(index: int) -> String:
 	var slot: int = index % 3
@@ -783,11 +800,31 @@ func _activity_for_index(index: int) -> String:
 		return "bar"
 	return "lounge"
 
-func _activity_target(activity: String, index: int) -> Vector2:
+func _choose_activity_target(activity: String, seed: int, npc_index: int) -> Vector2:
 	var targets: Array[Vector2] = _activity_targets(activity)
 	if targets.is_empty():
 		return Vector2(7.0, 5.5)
-	return targets[index % targets.size()]
+
+	var start_index: int = seed % targets.size()
+	for offset in range(targets.size()):
+		var candidate_index: int = (start_index + offset) % targets.size()
+		var candidate: Vector2 = targets[candidate_index]
+		if not _spot_is_reserved(candidate, npc_index):
+			return candidate
+
+	return targets[start_index]
+
+func _spot_is_reserved(candidate: Vector2, ignore_index: int) -> bool:
+	for i in range(npc_agents.size()):
+		if i == ignore_index:
+			continue
+		var other: Dictionary = npc_agents[i]
+		var reserved: Vector2 = other.get("reserved_spot", NO_SPOT)
+		if reserved == NO_SPOT:
+			continue
+		if reserved.distance_to(candidate) < 0.28:
+			return true
+	return false
 
 func _activity_targets(activity: String) -> Array[Vector2]:
 	var targets: Array[Vector2] = []
@@ -798,6 +835,8 @@ func _activity_targets(activity: String) -> Array[Vector2]:
 		targets.append(Vector2(8.1, 5.1))
 		targets.append(Vector2(6.1, 6.5))
 		targets.append(Vector2(7.6, 6.4))
+		targets.append(Vector2(8.7, 6.1))
+		targets.append(Vector2(5.5, 7.0))
 	elif activity == "bar":
 		targets.append(Vector2(2.55, 3.8))
 		targets.append(Vector2(2.55, 4.9))
@@ -805,19 +844,73 @@ func _activity_targets(activity: String) -> Array[Vector2]:
 		targets.append(Vector2(2.55, 7.0))
 	else:
 		targets.append(Vector2(9.6, 4.15))
+		targets.append(Vector2(10.5, 4.15))
 		targets.append(Vector2(9.7, 7.1))
-		targets.append(Vector2(4.0, 7.45))
+		targets.append(Vector2(10.6, 7.1))
+		targets.append(Vector2(3.4, 7.45))
+		targets.append(Vector2(4.3, 7.45))
 
 	for obj in placed_objects:
 		var kind: String = str(obj["kind"])
 		if activity == "dance" and kind == "dance":
-			targets.append(_object_center(obj))
+			_append_dance_spots(targets, obj)
 		elif activity == "bar" and kind == "bar":
-			targets.append(_bar_interaction_point(obj))
+			_append_bar_spots(targets, obj)
 		elif activity == "lounge" and kind == "seat":
-			targets.append(_seat_interaction_point(obj))
+			_append_seat_spots(targets, obj)
 
 	return targets
+
+func _append_dance_spots(targets: Array[Vector2], obj: Dictionary) -> void:
+	var x: int = int(obj["x"])
+	var y: int = int(obj["y"])
+	var width: int = int(obj["w"])
+	var depth: int = int(obj["d"])
+
+	for dy in range(depth):
+		for dx in range(width):
+			targets.append(Vector2(float(x + dx) + 0.5, float(y + dy) + 0.5))
+
+func _append_bar_spots(targets: Array[Vector2], obj: Dictionary) -> void:
+	var x: float = float(obj["x"])
+	var y: float = float(obj["y"])
+	var width: int = int(obj["w"])
+	var depth: int = int(obj["d"])
+
+	if depth >= width:
+		var side_x: float = x + float(width) + 0.45
+		if side_x >= float(CLUB_W) - 0.15:
+			side_x = x - 0.45
+		for i in range(depth):
+			var spot: Vector2 = Vector2(side_x, y + float(i) + 0.5)
+			targets.append(_clamp_activity_spot(spot))
+	else:
+		var side_y: float = y + float(depth) + 0.45
+		if side_y >= float(CLUB_H) - 0.15:
+			side_y = y - 0.45
+		for i in range(width):
+			var spot: Vector2 = Vector2(x + float(i) + 0.5, side_y)
+			targets.append(_clamp_activity_spot(spot))
+
+func _append_seat_spots(targets: Array[Vector2], obj: Dictionary) -> void:
+	var x: float = float(obj["x"])
+	var y: float = float(obj["y"])
+	var width: int = int(obj["w"])
+	var depth: int = int(obj["d"])
+	var side_y: float = y + float(depth) + 0.45
+
+	if side_y >= float(CLUB_H) - 0.15:
+		side_y = y - 0.45
+
+	for i in range(width):
+		var spot: Vector2 = Vector2(x + float(i) + 0.5, side_y)
+		targets.append(_clamp_activity_spot(spot))
+
+func _clamp_activity_spot(point: Vector2) -> Vector2:
+	return Vector2(
+		clamp(point.x, 0.35, float(CLUB_W) - 0.35),
+		clamp(point.y, 0.35, float(CLUB_H) - 0.35)
+	)
 
 func _object_center(obj: Dictionary) -> Vector2:
 	return Vector2(
@@ -856,11 +949,25 @@ func _seat_interaction_point(obj: Dictionary) -> Vector2:
 func _refresh_npc_targets_after_layout_change() -> void:
 	for i in range(npc_agents.size()):
 		var npc: Dictionary = npc_agents[i]
-		var activity: String = str(npc["activity"])
-		var refreshed_target: Vector2 = _activity_target(activity, i + npc_cycle_count)
-		npc["activity_target"] = refreshed_target
-
 		var state: String = str(npc["state"])
+		if state != "activity":
+			npc["reserved_spot"] = NO_SPOT
+		npc_agents[i] = npc
+
+	for i in range(npc_agents.size()):
+		var npc: Dictionary = npc_agents[i]
+		var state: String = str(npc["state"])
+		var activity: String = str(npc["activity"])
+
+		if state == "activity":
+			npc["reserved_spot"] = npc["pos"]
+			npc_agents[i] = npc
+			continue
+
+		var refreshed_target: Vector2 = _choose_activity_target(activity, i + npc_cycle_count, i)
+		npc["activity_target"] = refreshed_target
+		npc["reserved_spot"] = refreshed_target
+
 		if state == "walking":
 			_set_npc_destination(npc, refreshed_target)
 		elif state == "entering" or state == "leaving":
@@ -886,27 +993,30 @@ func _update_npcs(delta: float) -> void:
 		var state: String = str(npc["state"])
 
 		if state == "entering":
-			if _move_agent_along_path(npc, delta):
+			if _move_agent_along_path(npc, delta, i):
 				npc["state"] = "walking"
 				_set_npc_destination(npc, npc["activity_target"])
 
 		elif state == "walking":
-			if _move_agent_along_path(npc, delta):
+			if _move_agent_along_path(npc, delta, i):
 				npc["state"] = "activity"
 				npc["timer"] = 4.5 + float(i % 4) * 1.1
 
 		elif state == "activity":
 			npc["timer"] = float(npc["timer"]) - delta
 			if float(npc["timer"]) <= 0.0:
+				npc["reserved_spot"] = NO_SPOT
 				npc["state"] = "leaving"
 				_set_npc_destination(npc, Vector2(10.6, 1.65))
 
 		elif state == "leaving":
-			if _move_agent_along_path(npc, delta):
+			if _move_agent_along_path(npc, delta, i):
 				npc_cycle_count += 1
 				var next_activity: String = _activity_for_index(i + npc_cycle_count)
+				var next_target: Vector2 = _choose_activity_target(next_activity, i + npc_cycle_count, i)
 				npc["activity"] = next_activity
-				npc["activity_target"] = _activity_target(next_activity, i + npc_cycle_count)
+				npc["activity_target"] = next_target
+				npc["reserved_spot"] = next_target
 				npc["state"] = "waiting"
 				npc["pos"] = Vector2(11.0, 0.55)
 				npc["target"] = Vector2(10.6, 1.65)
@@ -928,7 +1038,7 @@ func _set_npc_destination(npc: Dictionary, target: Vector2) -> void:
 	npc["path"] = _find_nav_path(npc["pos"], safe_target)
 	npc["path_index"] = 0
 
-func _move_agent_along_path(npc: Dictionary, delta: float) -> bool:
+func _move_agent_along_path(npc: Dictionary, delta: float, npc_index: int) -> bool:
 	var path: Array = npc["path"]
 	var path_index: int = int(npc["path_index"])
 
@@ -946,7 +1056,8 @@ func _move_agent_along_path(npc: Dictionary, delta: float) -> bool:
 
 	var pos: Vector2 = npc["pos"]
 	var next_point: Vector2 = path[path_index]
-	var step: float = NPC_SPEED * delta
+	var speed_scale: float = _crowd_speed_scale(npc_index, pos, next_point)
+	var step: float = NPC_SPEED * speed_scale * delta
 
 	if pos.distance_to(next_point) <= step:
 		npc["pos"] = next_point
@@ -960,6 +1071,40 @@ func _move_agent_along_path(npc: Dictionary, delta: float) -> bool:
 
 	npc["pos"] = pos.move_toward(next_point, step)
 	return false
+
+func _crowd_speed_scale(npc_index: int, pos: Vector2, next_point: Vector2) -> float:
+	var scale: float = 1.0
+	var direction: Vector2 = (next_point - pos).normalized()
+
+	for i in range(npc_agents.size()):
+		if i == npc_index:
+			continue
+
+		var other: Dictionary = npc_agents[i]
+		if float(other["spawn_delay"]) > 0.0:
+			continue
+
+		var other_state: String = str(other["state"])
+		if other_state == "waiting":
+			continue
+
+		var other_pos: Vector2 = other["pos"]
+		var distance: float = pos.distance_to(other_pos)
+		if distance >= NPC_PERSONAL_SPACE:
+			continue
+
+		var toward_other: Vector2 = other_pos - pos
+		if toward_other.length() > 0.001 and direction.dot(toward_other.normalized()) < 0.15:
+			continue
+
+		if npc_index > i:
+			if distance < 0.24:
+				return 0.12
+			scale = minf(scale, 0.38)
+		else:
+			scale = minf(scale, 0.72)
+
+	return scale
 
 func _find_nav_path(start_pos: Vector2, target_pos: Vector2) -> Array:
 	var start: Vector2i = _nav_tile_from_position(start_pos)
