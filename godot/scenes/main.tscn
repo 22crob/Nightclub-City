@@ -92,6 +92,7 @@ offset_right = 240.0
 offset_bottom = 78.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 color = Color(0.055, 0.035, 0.09, 0.97)
 
 [node name="AccentTop" type="ColorRect" parent="HUD/LevelUpPanel"]
