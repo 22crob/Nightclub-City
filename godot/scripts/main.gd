@@ -938,6 +938,21 @@ func _draw_build_item(obj: Dictionary) -> void:
 		var glow_pos: Vector2 = _iso(x + 0.5, y + 0.5) - Vector2(0, 62)
 		draw_circle(glow_pos, 8.0, color)
 
+func _draw_top_wall_bar_texture(texture: Texture2D, anchor: Vector2, size: Vector2) -> void:
+	# Match the sprite's horizontal axis to the game's 2:1 isometric grid.
+	var iso_transform: Transform2D = Transform2D(
+		Vector2(1.0, 0.5),
+		Vector2(0.0, 1.0),
+		anchor
+	)
+	draw_set_transform_matrix(iso_transform)
+	draw_texture_rect(
+		texture,
+		Rect2(Vector2(-size.x * 0.5, -size.y), size),
+		false
+	)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
+
 func _draw_modular_bar_shelf(obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
 	var y: float = float(obj["y"])
@@ -946,10 +961,10 @@ func _draw_modular_bar_shelf(obj: Dictionary) -> void:
 	if bar_shelf_texture != null:
 		if int(obj["y"]) == 0:
 			var top_anchor: Vector2 = _iso(x + 0.5, 0.0)
-			draw_texture_rect(
+			_draw_top_wall_bar_texture(
 				bar_shelf_texture,
-				Rect2(top_anchor + Vector2(-27, -72), Vector2(54, 72)),
-				false
+				top_anchor,
+				Vector2(50, 68)
 			)
 			return
 		elif int(obj["x"]) == 0:
@@ -980,11 +995,11 @@ func _draw_modular_bar_segment(obj: Dictionary) -> void:
 		)
 
 		if bar_front_texture != null:
-			var top_counter_anchor: Vector2 = _iso(x + 0.5, y + 1.28)
-			draw_texture_rect(
+			var top_counter_anchor: Vector2 = _iso(x + 0.5, y + 1.30)
+			_draw_top_wall_bar_texture(
 				bar_front_texture,
-				Rect2(top_counter_anchor + Vector2(-28, -68), Vector2(56, 68)),
-				false
+				top_counter_anchor,
+				Vector2(52, 64)
 			)
 			return
 
