@@ -97,7 +97,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Modular Bar v1 loaded.")
+	print("Nightclub City Modular Bar v2 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
