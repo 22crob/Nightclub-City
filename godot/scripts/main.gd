@@ -28,6 +28,10 @@ const WALL_H: float = 108.0
 @onready var delete_button: Button = $HUD/SelectionPanel/Delete
 @onready var done_button: Button = $HUD/SelectionPanel/Done
 @onready var stats_label: Label = $HUD/StatsPanel/Stats
+@onready var club_status_label: Label = $HUD/BrandPanel/Status
+@onready var level_up_panel: ColorRect = $HUD/LevelUpPanel
+@onready var level_up_title: Label = $HUD/LevelUpPanel/Title
+@onready var level_up_detail: Label = $HUD/LevelUpPanel/Detail
 
 var dragging: bool = false
 var zoom_level: float = 1.0
@@ -43,36 +47,41 @@ const ECONOMY_SAVE_PATH: String = "user://economy.json"
 const NPC_SPEED: float = 0.95
 const NPC_PERSONAL_SPACE: float = 0.42
 const NO_SPOT: Vector2 = Vector2(-99.0, -99.0)
+const LEVEL_2_XP: int = 100
+const LEVEL_3_XP: int = 250
+const MAX_TEST_LEVEL: int = 3
 
 var npc_agents: Array = []
 var npc_cycle_count: int = 0
 var cash: int = 2500
 var xp: int = 0
 var completed_activities: int = 0
+var current_level: int = 1
+var level_up_timer: float = 0.0
 
 var item_catalog: Dictionary = {
 	"Bars": [
-		{"id": "starter_bar", "name": "Starter Bar", "w": 1, "d": 3, "kind": "bar", "color": Color("#2f6582")},
-		{"id": "compact_bar", "name": "Compact Bar", "w": 2, "d": 2, "kind": "bar", "color": Color("#5b337b")},
-		{"id": "neon_bar", "name": "Neon Bar", "w": 1, "d": 4, "kind": "bar", "color": Color("#315f78")}
+		{"id": "starter_bar", "name": "Starter Bar", "w": 1, "d": 3, "kind": "bar", "unlock_level": 1, "color": Color("#2f6582")},
+		{"id": "compact_bar", "name": "Compact Bar", "w": 2, "d": 2, "kind": "bar", "unlock_level": 2, "color": Color("#5b337b")},
+		{"id": "neon_bar", "name": "Neon Bar", "w": 1, "d": 4, "kind": "bar", "unlock_level": 3, "color": Color("#315f78")}
 	],
 	"Seating": [
-		{"id": "booth", "name": "Lounge Booth", "w": 2, "d": 1, "kind": "seat", "color": Color("#5b2d70")},
-		{"id": "sofa", "name": "Club Sofa", "w": 2, "d": 1, "kind": "seat", "color": Color("#294a70")},
-		{"id": "chair", "name": "Accent Chair", "w": 1, "d": 1, "kind": "seat", "color": Color("#7a3f82")}
+		{"id": "booth", "name": "Lounge Booth", "w": 2, "d": 1, "kind": "seat", "unlock_level": 1, "color": Color("#5b2d70")},
+		{"id": "sofa", "name": "Club Sofa", "w": 2, "d": 1, "kind": "seat", "unlock_level": 2, "color": Color("#294a70")},
+		{"id": "chair", "name": "Accent Chair", "w": 1, "d": 1, "kind": "seat", "unlock_level": 3, "color": Color("#7a3f82")}
 	],
 	"Dance": [
-		{"id": "dance_tile", "name": "Dance Tile", "w": 1, "d": 1, "kind": "dance", "color": Color("#7c36ff")},
-		{"id": "dance_block", "name": "2x2 Dance Floor", "w": 2, "d": 2, "kind": "dance", "color": Color("#ff3ebf")}
+		{"id": "dance_tile", "name": "Dance Tile", "w": 1, "d": 1, "kind": "dance", "unlock_level": 1, "color": Color("#7c36ff")},
+		{"id": "dance_block", "name": "2x2 Dance Floor", "w": 2, "d": 2, "kind": "dance", "unlock_level": 2, "color": Color("#ff3ebf")}
 	],
 	"Walls": [
-		{"id": "neon_divider", "name": "Neon Divider", "w": 2, "d": 1, "kind": "wall", "color": Color("#2ddfff")},
-		{"id": "purple_divider", "name": "Purple Divider", "w": 2, "d": 1, "kind": "wall", "color": Color("#a13dff")}
+		{"id": "neon_divider", "name": "Neon Divider", "w": 2, "d": 1, "kind": "wall", "unlock_level": 2, "color": Color("#2ddfff")},
+		{"id": "purple_divider", "name": "Purple Divider", "w": 2, "d": 1, "kind": "wall", "unlock_level": 3, "color": Color("#a13dff")}
 	],
 	"Decor": [
-		{"id": "round_table", "name": "Round Table", "w": 1, "d": 1, "kind": "table", "color": Color("#4b335e")},
-		{"id": "neon_pillar", "name": "Neon Pillar", "w": 1, "d": 1, "kind": "pillar", "color": Color("#28dfff")},
-		{"id": "purple_pillar", "name": "Purple Pillar", "w": 1, "d": 1, "kind": "pillar", "color": Color("#c24cff")}
+		{"id": "round_table", "name": "Round Table", "w": 1, "d": 1, "kind": "table", "unlock_level": 1, "color": Color("#4b335e")},
+		{"id": "neon_pillar", "name": "Neon Pillar", "w": 1, "d": 1, "kind": "pillar", "unlock_level": 2, "color": Color("#28dfff")},
+		{"id": "purple_pillar", "name": "Purple Pillar", "w": 1, "d": 1, "kind": "pillar", "unlock_level": 3, "color": Color("#c24cff")}
 	]
 }
 
@@ -90,7 +99,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Economy + XP v1 loaded.")
+	print("Nightclub City Level Progression v1 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -109,6 +118,7 @@ func _ready() -> void:
 	done_button.pressed.connect(_deselect_object)
 	_load_layout()
 	_load_economy()
+	current_level = _level_for_xp(xp)
 	_initialize_npcs()
 	_update_stats_hud()
 	_set_category("Bars")
@@ -117,6 +127,12 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	anim_time += delta
 	_update_npcs(delta)
+
+	if level_up_timer > 0.0:
+		level_up_timer -= delta
+		if level_up_timer <= 0.0:
+			level_up_panel.visible = false
+
 	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -461,23 +477,43 @@ func _close_design_drawer() -> void:
 func _set_category(category: String) -> void:
 	selected_category = category
 	_cancel_placement()
-	var items: Array = item_catalog[category]
+	_refresh_design_buttons()
+	design_hint.text = category + " selected • choose an unlocked item"
+
+func _refresh_design_buttons() -> void:
+	var items: Array = item_catalog[selected_category]
 	var buttons: Array[Button] = [item_button_1, item_button_2, item_button_3]
+
 	for i in range(buttons.size()):
-		if i < items.size():
-			buttons[i].visible = true
-			buttons[i].text = str(items[i]["name"])
-		else:
+		if i >= items.size():
 			buttons[i].visible = false
-	design_hint.text = category + " selected • choose an item to place"
+			continue
+
+		var item: Dictionary = items[i]
+		var unlock_level: int = int(item.get("unlock_level", 1))
+		var unlocked: bool = current_level >= unlock_level
+		buttons[i].visible = true
+		buttons[i].disabled = not unlocked
+
+		if unlocked:
+			buttons[i].text = str(item["name"])
+		else:
+			buttons[i].text = "LOCKED • L" + str(unlock_level)
 
 func _select_item(index: int) -> void:
 	var items: Array = item_catalog[selected_category]
 	if index < 0 or index >= items.size():
 		return
+
+	var item: Dictionary = items[index]
+	var unlock_level: int = int(item.get("unlock_level", 1))
+	if current_level < unlock_level:
+		design_hint.text = str(item["name"]) + " unlocks at Level " + str(unlock_level)
+		return
+
 	moving_object_index = -1
 	_deselect_object()
-	current_item = items[index].duplicate(true)
+	current_item = item.duplicate(true)
 	hover_tile = _world_to_tile(get_global_mouse_position())
 	design_hint.text = str(current_item["name"]) + " selected • click floor to place • right-click/Esc cancels"
 	queue_redraw()
@@ -1265,14 +1301,50 @@ func _complete_activity_reward(activity: String) -> void:
 		cash_reward = 9
 		xp_reward = 3
 
+	var previous_level: int = current_level
 	cash += cash_reward
 	xp += xp_reward
 	completed_activities += 1
+	current_level = _level_for_xp(xp)
+
+	if current_level > previous_level:
+		_show_level_up(current_level)
+
 	_update_stats_hud()
 	_save_economy()
 
 func _update_stats_hud() -> void:
-	stats_label.text = "$ " + str(cash) + "        XP  " + str(xp) + " / 100\nGuests generate cash + XP from activities"
+	club_status_label.text = "LEVEL " + str(current_level) + "  •  STARTER CLUB"
+
+	if current_level == 1:
+		stats_label.text = "$ " + str(cash) + "        XP  " + str(xp) + " / " + str(LEVEL_2_XP) + "\nNext unlocks at Level 2"
+	elif current_level == 2:
+		var level_two_progress: int = xp - LEVEL_2_XP
+		var level_two_goal: int = LEVEL_3_XP - LEVEL_2_XP
+		stats_label.text = "$ " + str(cash) + "        XP  " + str(level_two_progress) + " / " + str(level_two_goal) + "\nNext unlocks at Level 3"
+	else:
+		stats_label.text = "$ " + str(cash) + "        XP  " + str(xp) + "  •  LEVEL 3\nProgression test cap reached"
+
+func _level_for_xp(total_xp: int) -> int:
+	if total_xp >= LEVEL_3_XP:
+		return 3
+	if total_xp >= LEVEL_2_XP:
+		return 2
+	return 1
+
+func _show_level_up(new_level: int) -> void:
+	level_up_title.text = "LEVEL UP!  LEVEL " + str(new_level)
+	level_up_detail.text = _unlock_summary_for_level(new_level)
+	level_up_panel.visible = true
+	level_up_timer = 3.5
+	_refresh_design_buttons()
+
+func _unlock_summary_for_level(level: int) -> String:
+	if level == 2:
+		return "Unlocked: Compact Bar • Club Sofa • 2x2 Dance Floor • Neon Divider • Neon Pillar"
+	if level == 3:
+		return "Unlocked: Neon Bar • Accent Chair • Purple Divider • Purple Pillar"
+	return "New club items unlocked"
 
 func _save_economy() -> void:
 	var save_data: Dictionary = {
