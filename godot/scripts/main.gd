@@ -83,7 +83,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City NPC Behavior v1 loaded.")
+	print("Nightclub City NPC Behavior v2 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -525,6 +525,7 @@ func _place_current_item(tile: Vector2i) -> void:
 		hover_tile = Vector2i(-1, -1)
 		_refresh_selection_panel()
 		_save_layout()
+		_refresh_npc_targets_after_layout_change()
 		queue_redraw()
 		return
 
@@ -540,6 +541,7 @@ func _place_current_item(tile: Vector2i) -> void:
 	_refresh_selection_panel()
 	design_hint.text = str(placed["name"]) + " placed • use Move / Rotate / Delete, or choose another item"
 	_save_layout()
+	_refresh_npc_targets_after_layout_change()
 	queue_redraw()
 
 func _draw_placed_objects() -> void:
@@ -666,6 +668,7 @@ func _rotate_selected_object() -> void:
 	placed_objects[selected_object_index]["w"] = new_w
 	placed_objects[selected_object_index]["d"] = new_d
 	_save_layout()
+	_refresh_npc_targets_after_layout_change()
 	_refresh_selection_panel()
 	queue_redraw()
 
@@ -679,6 +682,7 @@ func _delete_selected_object() -> void:
 	if design_drawer.visible:
 		design_hint.text = "Item deleted • choose another item or select an existing object"
 	_save_layout()
+	_refresh_npc_targets_after_layout_change()
 	queue_redraw()
 
 func _draw_selection_highlight() -> void:
@@ -778,31 +782,73 @@ func _activity_for_index(index: int) -> String:
 	return "lounge"
 
 func _activity_target(activity: String, index: int) -> Vector2:
+	var targets: Array[Vector2] = _activity_targets(activity)
+	if targets.is_empty():
+		return Vector2(7.0, 5.5)
+	return targets[index % targets.size()]
+
+func _activity_targets(activity: String) -> Array[Vector2]:
+	var targets: Array[Vector2] = []
+
 	if activity == "dance":
-		var dance_points: Array[Vector2] = [
-			Vector2(5.7, 5.0),
-			Vector2(6.8, 5.3),
-			Vector2(8.1, 5.1),
-			Vector2(6.1, 6.5),
-			Vector2(7.6, 6.4)
-		]
-		return dance_points[index % dance_points.size()]
+		targets.append(Vector2(5.7, 5.0))
+		targets.append(Vector2(6.8, 5.3))
+		targets.append(Vector2(8.1, 5.1))
+		targets.append(Vector2(6.1, 6.5))
+		targets.append(Vector2(7.6, 6.4))
+	elif activity == "bar":
+		targets.append(Vector2(2.55, 3.8))
+		targets.append(Vector2(2.55, 4.9))
+		targets.append(Vector2(2.55, 6.0))
+		targets.append(Vector2(2.55, 7.0))
+	else:
+		targets.append(Vector2(9.7, 3.9))
+		targets.append(Vector2(9.8, 6.7))
+		targets.append(Vector2(4.0, 8.1))
 
-	if activity == "bar":
-		var bar_points: Array[Vector2] = [
-			Vector2(2.55, 3.8),
-			Vector2(2.55, 4.9),
-			Vector2(2.55, 6.0),
-			Vector2(2.55, 7.0)
-		]
-		return bar_points[index % bar_points.size()]
+	for obj in placed_objects:
+		var kind: String = str(obj["kind"])
+		if activity == "dance" and kind == "dance":
+			targets.append(_object_center(obj))
+		elif activity == "bar" and kind == "bar":
+			targets.append(_bar_interaction_point(obj))
+		elif activity == "lounge" and kind == "seat":
+			targets.append(_object_center(obj))
 
-	var lounge_points: Array[Vector2] = [
-		Vector2(9.7, 3.9),
-		Vector2(9.8, 6.7),
-		Vector2(4.0, 8.1)
-	]
-	return lounge_points[index % lounge_points.size()]
+	return targets
+
+func _object_center(obj: Dictionary) -> Vector2:
+	return Vector2(
+		float(obj["x"]) + float(obj["w"]) * 0.5,
+		float(obj["y"]) + float(obj["d"]) * 0.5
+	)
+
+func _bar_interaction_point(obj: Dictionary) -> Vector2:
+	var x: float = float(obj["x"])
+	var y: float = float(obj["y"])
+	var width: float = float(obj["w"])
+	var depth: float = float(obj["d"])
+	var point: Vector2 = Vector2(x + width + 0.45, y + depth * 0.5)
+
+	if point.x >= float(CLUB_W) - 0.15:
+		point.x = x - 0.45
+
+	point.x = clamp(point.x, 0.35, float(CLUB_W) - 0.35)
+	point.y = clamp(point.y, 0.35, float(CLUB_H) - 0.35)
+	return point
+
+func _refresh_npc_targets_after_layout_change() -> void:
+	for i in range(npc_agents.size()):
+		var npc: Dictionary = npc_agents[i]
+		var activity: String = str(npc["activity"])
+		var refreshed_target: Vector2 = _activity_target(activity, i + npc_cycle_count)
+		npc["activity_target"] = refreshed_target
+
+		var state: String = str(npc["state"])
+		if state == "walking":
+			npc["target"] = refreshed_target
+
+		npc_agents[i] = npc
 
 func _update_npcs(delta: float) -> void:
 	for i in range(npc_agents.size()):
