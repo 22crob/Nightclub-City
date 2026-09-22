@@ -97,7 +97,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Modular Bar v2 loaded.")
+	print("Nightclub City Clean Club Shell v1 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -208,10 +208,6 @@ func _draw() -> void:
 	_draw_dance_floor()
 	_draw_walls()
 	_draw_entrance()
-	_draw_dj_booth()
-	_draw_bar()
-	_draw_lounges()
-	_draw_tables()
 	_draw_placed_objects()
 	_draw_selection_highlight()
 	_draw_npcs()
@@ -1172,11 +1168,19 @@ func _lane_offset_for_index(index: int) -> Vector2:
 
 func _activity_for_index(index: int) -> String:
 	var slot: int = index % 3
-	if slot == 0:
-		return "dance"
-	if slot == 1:
+
+	if slot == 1 and _has_player_activity_object("bar"):
 		return "bar"
-	return "lounge"
+	if slot == 2 and _has_player_activity_object("seat"):
+		return "lounge"
+
+	return "dance"
+
+func _has_player_activity_object(kind: String) -> bool:
+	for obj in placed_objects:
+		if str(obj["kind"]) == kind:
+			return true
+	return false
 
 func _choose_activity_target(activity: String, seed: int, npc_index: int) -> Vector2:
 	var targets: Array[Vector2] = _activity_targets(activity)
@@ -1216,6 +1220,7 @@ func _activity_targets(activity: String) -> Array[Vector2]:
 	var targets: Array[Vector2] = []
 
 	if activity == "dance":
+		# The starter dance floor remains part of the clean club shell.
 		targets.append(Vector2(5.7, 5.0))
 		targets.append(Vector2(6.8, 5.3))
 		targets.append(Vector2(8.1, 5.1))
@@ -1223,18 +1228,8 @@ func _activity_targets(activity: String) -> Array[Vector2]:
 		targets.append(Vector2(7.6, 6.4))
 		targets.append(Vector2(8.7, 6.1))
 		targets.append(Vector2(5.5, 7.0))
-	elif activity == "bar":
-		targets.append(Vector2(2.55, 3.8))
-		targets.append(Vector2(2.55, 4.9))
-		targets.append(Vector2(2.55, 6.0))
-		targets.append(Vector2(2.55, 7.0))
-	else:
-		targets.append(Vector2(9.6, 4.15))
-		targets.append(Vector2(10.5, 4.15))
-		targets.append(Vector2(9.7, 7.1))
-		targets.append(Vector2(10.6, 7.1))
-		targets.append(Vector2(3.4, 7.45))
-		targets.append(Vector2(4.3, 7.45))
+
+	# Bar and lounge targets now come only from furniture the player places.
 
 	for obj in placed_objects:
 		var kind: String = str(obj["kind"])
@@ -1590,27 +1585,8 @@ func _is_nav_tile_blocked(tile: Vector2i) -> bool:
 
 	return false
 
-func _is_static_nav_blocked(tile: Vector2i) -> bool:
-	# Starter bar.
-	if tile.x >= 0 and tile.x <= 1 and tile.y >= 2 and tile.y <= 7:
-		return true
-
-	# Starter DJ booth.
-	if tile.x >= 5 and tile.x <= 8 and tile.y >= 1 and tile.y <= 2:
-		return true
-
-	# Starter lounge booths.
-	if tile.x >= 10 and tile.x <= 12 and tile.y >= 2 and tile.y <= 3:
-		return true
-	if tile.x >= 10 and tile.x <= 12 and tile.y >= 5 and tile.y <= 6:
-		return true
-	if tile.x >= 2 and tile.x <= 4 and tile.y == 8:
-		return true
-
-	# Starter cocktail tables.
-	if tile == Vector2i(11, 8) or tile == Vector2i(3, 6):
-		return true
-
+func _is_static_nav_blocked(_tile: Vector2i) -> bool:
+	# Clean shell: no invisible starter furniture blocks the buildable floor.
 	return false
 
 
