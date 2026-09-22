@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "grid": {
+    "tile_width": 72,
+    "tile_height": 36,
+    "wall_height": 108,
+    "top_wall_tile_delta": [36, 18]
+  },
+  "starter_bar": {
+    "id": "bar_segment",
+    "footprint": [1, 1],
+    "top_wall_only": true,
+    "world_parts": {
+      "counter": {
+        "path": "res://assets/bar/front_counter_module.png.b64",
+        "source_edge_a": [6, 44],
+        "source_edge_b": [45, 62],
+        "target_edge": "customer_facing_tile_edge"
+      },
+      "back_shelf": {
+        "path": "res://assets/bar/back_shelf_module.png.b64",
+        "target": "one_top_wall_tile",
+        "wall_height_fraction": 0.75
+      }
+    },
+    "legacy_overlapping_run_sprites": {
+      "enabled": false,
+      "files": [
+        "starter_bar_single.png.b64",
+        "starter_bar_left_end.png.b64",
+        "starter_bar_middle.png.b64",
+        "starter_bar_right_end.png.b64"
+      ]
+    }
+  }
+}
