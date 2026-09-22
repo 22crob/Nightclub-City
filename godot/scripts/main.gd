@@ -83,7 +83,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City NPC Behavior v2 loaded.")
+	print("Nightclub City Pathfinding v1 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -769,6 +769,8 @@ func _initialize_npcs() -> void:
 			"activity_target": _activity_target(activity, i),
 			"timer": 0.0,
 			"spawn_delay": 0.15 + float(i) * 0.75,
+			"path": [],
+			"path_index": 0,
 			"color": npc_colors[i]
 		}
 		npc_agents.append(agent)
@@ -802,9 +804,9 @@ func _activity_targets(activity: String) -> Array[Vector2]:
 		targets.append(Vector2(2.55, 6.0))
 		targets.append(Vector2(2.55, 7.0))
 	else:
-		targets.append(Vector2(9.7, 3.9))
-		targets.append(Vector2(9.8, 6.7))
-		targets.append(Vector2(4.0, 8.1))
+		targets.append(Vector2(9.6, 4.15))
+		targets.append(Vector2(9.7, 7.1))
+		targets.append(Vector2(4.0, 7.45))
 
 	for obj in placed_objects:
 		var kind: String = str(obj["kind"])
@@ -813,7 +815,7 @@ func _activity_targets(activity: String) -> Array[Vector2]:
 		elif activity == "bar" and kind == "bar":
 			targets.append(_bar_interaction_point(obj))
 		elif activity == "lounge" and kind == "seat":
-			targets.append(_object_center(obj))
+			targets.append(_seat_interaction_point(obj))
 
 	return targets
 
@@ -837,6 +839,20 @@ func _bar_interaction_point(obj: Dictionary) -> Vector2:
 	point.y = clamp(point.y, 0.35, float(CLUB_H) - 0.35)
 	return point
 
+func _seat_interaction_point(obj: Dictionary) -> Vector2:
+	var x: float = float(obj["x"])
+	var y: float = float(obj["y"])
+	var width: float = float(obj["w"])
+	var depth: float = float(obj["d"])
+	var point: Vector2 = Vector2(x + width * 0.5, y + depth + 0.45)
+
+	if point.y >= float(CLUB_H) - 0.15:
+		point.y = y - 0.45
+
+	point.x = clamp(point.x, 0.35, float(CLUB_W) - 0.35)
+	point.y = clamp(point.y, 0.35, float(CLUB_H) - 0.35)
+	return point
+
 func _refresh_npc_targets_after_layout_change() -> void:
 	for i in range(npc_agents.size()):
 		var npc: Dictionary = npc_agents[i]
@@ -846,7 +862,9 @@ func _refresh_npc_targets_after_layout_change() -> void:
 
 		var state: String = str(npc["state"])
 		if state == "walking":
-			npc["target"] = refreshed_target
+			_set_npc_destination(npc, refreshed_target)
+		elif state == "entering" or state == "leaving":
+			_set_npc_destination(npc, npc["target"])
 
 		npc_agents[i] = npc
 
@@ -861,19 +879,19 @@ func _update_npcs(delta: float) -> void:
 			if spawn_delay <= 0.0:
 				npc["state"] = "entering"
 				npc["pos"] = Vector2(11.0, 0.55)
-				npc["target"] = Vector2(10.6, 1.65)
+				_set_npc_destination(npc, Vector2(10.6, 1.65))
 			npc_agents[i] = npc
 			continue
 
 		var state: String = str(npc["state"])
 
 		if state == "entering":
-			if _move_agent_toward(npc, delta):
+			if _move_agent_along_path(npc, delta):
 				npc["state"] = "walking"
-				npc["target"] = npc["activity_target"]
+				_set_npc_destination(npc, npc["activity_target"])
 
 		elif state == "walking":
-			if _move_agent_toward(npc, delta):
+			if _move_agent_along_path(npc, delta):
 				npc["state"] = "activity"
 				npc["timer"] = 4.5 + float(i % 4) * 1.1
 
@@ -881,10 +899,10 @@ func _update_npcs(delta: float) -> void:
 			npc["timer"] = float(npc["timer"]) - delta
 			if float(npc["timer"]) <= 0.0:
 				npc["state"] = "leaving"
-				npc["target"] = Vector2(10.6, 1.65)
+				_set_npc_destination(npc, Vector2(10.6, 1.65))
 
 		elif state == "leaving":
-			if _move_agent_toward(npc, delta):
+			if _move_agent_along_path(npc, delta):
 				npc_cycle_count += 1
 				var next_activity: String = _activity_for_index(i + npc_cycle_count)
 				npc["activity"] = next_activity
@@ -892,18 +910,171 @@ func _update_npcs(delta: float) -> void:
 				npc["state"] = "waiting"
 				npc["pos"] = Vector2(11.0, 0.55)
 				npc["target"] = Vector2(10.6, 1.65)
+				npc["path"] = []
+				npc["path_index"] = 0
 				npc["spawn_delay"] = 2.0 + float(i % 3) * 0.65
 
 		npc_agents[i] = npc
 
-func _move_agent_toward(npc: Dictionary, delta: float) -> bool:
-	var pos: Vector2 = npc["pos"]
-	var target: Vector2 = npc["target"]
-	var step: float = NPC_SPEED * delta
+func _set_npc_destination(npc: Dictionary, target: Vector2) -> void:
+	npc["target"] = target
+	npc["path"] = _find_nav_path(npc["pos"], target)
+	npc["path_index"] = 0
 
-	if pos.distance_to(target) <= step:
-		npc["pos"] = target
+func _move_agent_along_path(npc: Dictionary, delta: float) -> bool:
+	var path: Array = npc["path"]
+	var path_index: int = int(npc["path_index"])
+
+	if path.is_empty():
+		var direct_target: Vector2 = npc["target"]
+		if Vector2(npc["pos"]).distance_to(direct_target) <= 0.08:
+			npc["pos"] = direct_target
+			return true
+		return false
+
+	if path_index >= path.size():
+		npc["pos"] = npc["target"]
 		return true
 
-	npc["pos"] = pos.move_toward(target, step)
+	var pos: Vector2 = npc["pos"]
+	var next_point: Vector2 = path[path_index]
+	var step: float = NPC_SPEED * delta
+
+	if pos.distance_to(next_point) <= step:
+		npc["pos"] = next_point
+		path_index += 1
+		npc["path_index"] = path_index
+
+		if path_index >= path.size():
+			npc["pos"] = npc["target"]
+			return true
+		return false
+
+	npc["pos"] = pos.move_toward(next_point, step)
+	return false
+
+func _find_nav_path(start_pos: Vector2, target_pos: Vector2) -> Array:
+	var start: Vector2i = _nav_tile_from_position(start_pos)
+	var goal: Vector2i = _nearest_open_nav_tile(_nav_tile_from_position(target_pos))
+
+	if start == goal:
+		return [target_pos]
+
+	var frontier: Array = [start]
+	var frontier_index: int = 0
+	var came_from: Dictionary = {}
+	came_from[start] = start
+	var directions: Array[Vector2i] = [
+		Vector2i(1, 0),
+		Vector2i(-1, 0),
+		Vector2i(0, 1),
+		Vector2i(0, -1)
+	]
+
+	while frontier_index < frontier.size():
+		var current: Vector2i = frontier[frontier_index]
+		frontier_index += 1
+
+		if current == goal:
+			break
+
+		for direction in directions:
+			var next_tile: Vector2i = current + direction
+			if not _is_nav_tile_valid(next_tile):
+				continue
+			if next_tile != goal and _is_nav_tile_blocked(next_tile):
+				continue
+			if came_from.has(next_tile):
+				continue
+
+			came_from[next_tile] = current
+			frontier.append(next_tile)
+
+	if not came_from.has(goal):
+		return []
+
+	var reverse_cells: Array = []
+	var cursor: Vector2i = goal
+
+	while cursor != start:
+		reverse_cells.append(cursor)
+		cursor = came_from[cursor]
+
+	reverse_cells.reverse()
+
+	var path: Array = []
+	for cell in reverse_cells:
+		path.append(Vector2(float(cell.x) + 0.5, float(cell.y) + 0.5))
+
+	if path.is_empty():
+		path.append(target_pos)
+	else:
+		path[path.size() - 1] = target_pos
+
+	return path
+
+func _nav_tile_from_position(pos: Vector2) -> Vector2i:
+	return Vector2i(
+		int(clamp(floor(pos.x), 0.0, float(CLUB_W - 1))),
+		int(clamp(floor(pos.y), 0.0, float(CLUB_H - 1)))
+	)
+
+func _nearest_open_nav_tile(origin: Vector2i) -> Vector2i:
+	if _is_nav_tile_valid(origin) and not _is_nav_tile_blocked(origin):
+		return origin
+
+	for radius in range(1, 5):
+		for y_offset in range(-radius, radius + 1):
+			for x_offset in range(-radius, radius + 1):
+				if abs(x_offset) != radius and abs(y_offset) != radius:
+					continue
+				var candidate: Vector2i = origin + Vector2i(x_offset, y_offset)
+				if _is_nav_tile_valid(candidate) and not _is_nav_tile_blocked(candidate):
+					return candidate
+
+	return origin
+
+func _is_nav_tile_valid(tile: Vector2i) -> bool:
+	return tile.x >= 0 and tile.y >= 0 and tile.x < CLUB_W and tile.y < CLUB_H
+
+func _is_nav_tile_blocked(tile: Vector2i) -> bool:
+	if _is_static_nav_blocked(tile):
+		return true
+
+	for obj in placed_objects:
+		var kind: String = str(obj["kind"])
+		if kind == "dance":
+			continue
+
+		var ox: int = int(obj["x"])
+		var oy: int = int(obj["y"])
+		var ow: int = int(obj["w"])
+		var od: int = int(obj["d"])
+
+		if tile.x >= ox and tile.x < ox + ow and tile.y >= oy and tile.y < oy + od:
+			return true
+
+	return false
+
+func _is_static_nav_blocked(tile: Vector2i) -> bool:
+	# Starter bar.
+	if tile.x >= 0 and tile.x <= 1 and tile.y >= 2 and tile.y <= 7:
+		return true
+
+	# Starter DJ booth.
+	if tile.x >= 5 and tile.x <= 8 and tile.y >= 1 and tile.y <= 2:
+		return true
+
+	# Starter lounge booths.
+	if tile.x >= 10 and tile.x <= 12 and tile.y >= 2 and tile.y <= 3:
+		return true
+	if tile.x >= 10 and tile.x <= 12 and tile.y >= 5 and tile.y <= 6:
+		return true
+	if tile.x >= 2 and tile.x <= 4 and tile.y == 8:
+		return true
+
+	# Starter cocktail tables.
+	if tile == Vector2i(11, 8) or tile == Vector2i(3, 6):
+		return true
+
 	return false
