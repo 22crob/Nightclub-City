@@ -100,7 +100,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Exact Grid Bar Snap v1 loaded.")
+	print("Nightclub City Bar Wall Panel v1 loaded.")
 	_load_bar_sprite_assets()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
@@ -979,18 +979,56 @@ func _draw_modular_bar_shelf(obj: Dictionary) -> void:
 	var y: float = float(obj["y"])
 	var color: Color = obj["color"]
 
-	if bar_shelf_texture != null:
-		if int(obj["y"]) == 0:
-			# Snap the shelf's baked bottom edge directly onto this tile's wall edge.
-			_draw_texture_snapped_to_edge(
-				bar_shelf_texture,
-				Vector2(9.0, 54.0),
-				Vector2(46.0, 72.0),
-				_iso(x, 0.0),
-				_iso(x + 1.0, 0.0)
+	if int(obj["y"]) == 0:
+		var wall_a: Vector2 = _iso(x, 0.0)
+		var wall_b: Vector2 = _iso(x + 1.0, 0.0)
+		var panel_h: float = WALL_H * 0.75
+		var wall_delta: Vector2 = wall_b - wall_a
+
+		# One module = one exact wall tile. The back piece is a mounted panel
+		# that starts on the wall/floor seam and rises 75% of the wall height.
+		var panel: PackedVector2Array = PackedVector2Array([
+			wall_a,
+			wall_b,
+			wall_b - Vector2(0, panel_h),
+			wall_a - Vector2(0, panel_h)
+		])
+		draw_polygon(panel, PackedColorArray([Color("#171523")]))
+		draw_line(wall_a, wall_b, Color("#2de3ff"), 1.4)
+		draw_line(
+			wall_a - Vector2(0, panel_h),
+			wall_b - Vector2(0, panel_h),
+			Color("#b64cff"),
+			1.2
+		)
+
+		if bar_shelf_texture != null:
+			# Fit the shelf art inside the wall panel itself. The x basis follows
+			# the exact one-tile wall edge; the y basis runs vertically up the wall.
+			var texture_size: Vector2 = bar_shelf_texture.get_size()
+			var inset_x: float = 0.08
+			var inset_top: float = 0.08
+			var inset_bottom: float = 0.08
+			var usable_wall_delta: Vector2 = wall_delta * (1.0 - inset_x * 2.0)
+			var usable_height: float = panel_h * (1.0 - inset_top - inset_bottom)
+			var texture_origin: Vector2 = wall_a + wall_delta * inset_x - Vector2(0, panel_h * inset_bottom)
+			var panel_transform: Transform2D = Transform2D(
+				usable_wall_delta / texture_size.x,
+				Vector2(0, -usable_height / texture_size.y),
+				texture_origin
 			)
-			return
-		elif int(obj["x"]) == 0:
+			draw_set_transform_matrix(panel_transform)
+			draw_texture_rect(
+				bar_shelf_texture,
+				Rect2(Vector2.ZERO, texture_size),
+				false
+			)
+			draw_set_transform_matrix(Transform2D.IDENTITY)
+		return
+
+	if int(obj["x"]) == 0:
+		# Left-wall version stays unused during single-bar calibration.
+		if bar_shelf_texture != null:
 			var left_anchor: Vector2 = _iso(0.0, y + 0.5)
 			draw_set_transform(left_anchor, 0.0, Vector2(-1.0, 1.0))
 			draw_texture_rect(
@@ -1000,10 +1038,6 @@ func _draw_modular_bar_shelf(obj: Dictionary) -> void:
 			)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			return
-
-	if int(obj["y"]) == 0:
-		_draw_bar_back_shelf_top(x, color)
-	elif int(obj["x"]) == 0:
 		_draw_bar_back_shelf_left(y, color)
 
 func _draw_modular_bar_segment(obj: Dictionary) -> void:
