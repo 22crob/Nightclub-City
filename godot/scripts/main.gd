@@ -100,7 +100,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Isometric Bar Asset Calibration v2 loaded.")
+	print("Nightclub City Exact Grid Bar Snap v1 loaded.")
 	_load_bar_sprite_assets()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
@@ -938,6 +938,42 @@ func _draw_build_item(obj: Dictionary) -> void:
 		var glow_pos: Vector2 = _iso(x + 0.5, y + 0.5) - Vector2(0, 62)
 		draw_circle(glow_pos, 8.0, color)
 
+func _draw_texture_snapped_to_edge(
+	texture: Texture2D,
+	source_a: Vector2,
+	source_b: Vector2,
+	target_a: Vector2,
+	target_b: Vector2
+) -> void:
+	var source_delta: Vector2 = source_b - source_a
+	var target_delta: Vector2 = target_b - target_a
+
+	if abs(source_delta.x) < 0.001 or abs(source_delta.y) < 0.001:
+		return
+
+	# The bar art was authored with the same isometric slope as the game.
+	# Non-uniform scaling makes the baked source edge land exactly on the
+	# requested tile edge instead of using guessed pixel offsets.
+	var scale: Vector2 = Vector2(
+		target_delta.x / source_delta.x,
+		target_delta.y / source_delta.y
+	)
+	var texture_size: Vector2 = texture.get_size()
+	var draw_size: Vector2 = Vector2(
+		texture_size.x * scale.x,
+		texture_size.y * scale.y
+	)
+	var draw_position: Vector2 = target_a - Vector2(
+		source_a.x * scale.x,
+		source_a.y * scale.y
+	)
+
+	draw_texture_rect(
+		texture,
+		Rect2(draw_position, draw_size),
+		false
+	)
+
 func _draw_modular_bar_shelf(obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
 	var y: float = float(obj["y"])
@@ -945,13 +981,13 @@ func _draw_modular_bar_shelf(obj: Dictionary) -> void:
 
 	if bar_shelf_texture != null:
 		if int(obj["y"]) == 0:
-			# Sprite already contains its own isometric perspective. Anchor its
-			# bottom edge directly to the wall/floor seam instead of shearing it again.
-			var top_anchor: Vector2 = _iso(x + 0.5, 0.0)
-			draw_texture_rect(
+			# Snap the shelf's baked bottom edge directly onto this tile's wall edge.
+			_draw_texture_snapped_to_edge(
 				bar_shelf_texture,
-				Rect2(top_anchor + Vector2(-30, -72), Vector2(60, 78)),
-				false
+				Vector2(9.0, 54.0),
+				Vector2(46.0, 72.0),
+				_iso(x, 0.0),
+				_iso(x + 1.0, 0.0)
 			)
 			return
 		elif int(obj["x"]) == 0:
@@ -982,13 +1018,14 @@ func _draw_modular_bar_segment(obj: Dictionary) -> void:
 		)
 
 		if bar_front_texture != null:
-			# Keep the customer counter separate from the wall shelf so the
-			# bartender lane remains obvious.
-			var top_counter_anchor: Vector2 = _iso(x + 0.5, y + 1.10)
-			draw_texture_rect(
+			# Snap the counter's baked front-bottom edge directly onto the tile's
+			# customer-facing edge. The open tile depth behind it is the bartender lane.
+			_draw_texture_snapped_to_edge(
 				bar_front_texture,
-				Rect2(top_counter_anchor + Vector2(-34, -60), Vector2(68, 66)),
-				false
+				Vector2(6.0, 44.0),
+				Vector2(45.0, 62.0),
+				_iso(x, y + 1.0),
+				_iso(x + 1.0, y + 1.0)
 			)
 			return
 
