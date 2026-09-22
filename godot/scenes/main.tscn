@@ -224,7 +224,7 @@ offset_right = 520.0
 offset_bottom = 170.0
 theme_override_colors/font_color = Color(0.66, 0.75, 0.94, 1)
 theme_override_font_sizes/font_size = 11
-text = "Choose an item, then click a floor tile to place it. Right-click or Esc cancels."
+text = "Place an item and its edit controls will appear automatically."
 horizontal_alignment = 1
 
 

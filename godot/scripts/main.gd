@@ -524,7 +524,13 @@ func _place_current_item(tile: Vector2i) -> void:
 	placed["x"] = tile.x
 	placed["y"] = tile.y
 	placed_objects.append(placed)
-	design_hint.text = str(current_item["name"]) + " placed • click again to place another"
+
+	selected_object_index = placed_objects.size() - 1
+	moving_object_index = -1
+	current_item = {}
+	hover_tile = Vector2i(-1, -1)
+	_refresh_selection_panel()
+	design_hint.text = str(placed["name"]) + " placed • use Move / Rotate / Delete, or choose another item"
 	_save_layout()
 	queue_redraw()
 
