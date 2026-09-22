@@ -6,6 +6,7 @@ const GRID_W: int = 12
 const GRID_H: int = 8
 const WALL_H: float = 108.0
 const ORIGIN: Vector2 = Vector2(500.0, 185.0)
+const TEST_MODULE_COUNT: int = 6
 
 @export var bar_scene: PackedScene
 
@@ -35,12 +36,11 @@ func _spawn_bar_test_run() -> void:
 		push_warning("AssetTestRoom has no Bar_01 PackedScene assigned.")
 		return
 
-	# Three 3x1 bars placed exactly next to one another on the top wall.
-	# Their logical footprints are [0..3], [3..6], [6..9].
-	for i in range(3):
+	# Six universal 1x1 modules placed on consecutive wall tiles.
+	for i in range(TEST_MODULE_COUNT):
 		var bar: Node2D = bar_scene.instantiate()
-		bar.name = "Bar_01_Test_%d" % (i + 1)
-		bar.position = _world_iso(float(i * 3), 0.0)
+		bar.name = "Bar_01_Module_%02d" % (i + 1)
+		bar.position = _world_iso(float(i), 0.0)
 		add_child(bar)
 
 func _draw() -> void:
@@ -68,12 +68,12 @@ func _draw() -> void:
 		draw_polygon(wall, PackedColorArray([Color("#261a33")]))
 		draw_line(a - Vector2(0.0, WALL_H), b - Vector2(0.0, WALL_H), Color("#b03fff"), 1.5)
 
-	# Highlight the exact 9x1 logical area occupied by the three bars.
-	var test_strip: PackedVector2Array = _tile_points(0.0, 0.0, 9.0, 1.0)
+	# Highlight the exact 6x1 strip occupied by six 1x1 bar modules.
+	var test_strip: PackedVector2Array = _tile_points(0.0, 0.0, float(TEST_MODULE_COUNT), 1.0)
 	for i in range(test_strip.size()):
 		draw_line(test_strip[i], test_strip[(i + 1) % test_strip.size()], Color("#f6d365"), 2.0)
 
-	# Legend: yellow = placement anchor, green = bartender, pink = customers.
+	# Legend: yellow = placement anchor, green = bartender, pink = customer.
 	draw_circle(Vector2(32.0, 625.0), 5.0, Color("#f6d365"))
 	draw_circle(Vector2(190.0, 625.0), 5.0, Color("#66e39a"))
 	draw_circle(Vector2(354.0, 625.0), 5.0, Color("#ff6fae"))

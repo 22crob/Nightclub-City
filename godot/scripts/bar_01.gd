@@ -2,16 +2,14 @@ extends Node2D
 
 const TILE_W: float = 72.0
 const TILE_H: float = 36.0
-const FOOTPRINT_W: int = 3
+const FOOTPRINT_W: int = 1
 const FOOTPRINT_D: int = 1
 
 @export var show_debug_markers: bool = true
 
 @onready var placement_anchor: Marker2D = $PlacementAnchor
 @onready var bartender_point: Marker2D = $BartenderPoint
-@onready var customer_point_1: Marker2D = $CustomerPoint1
-@onready var customer_point_2: Marker2D = $CustomerPoint2
-@onready var customer_point_3: Marker2D = $CustomerPoint3
+@onready var customer_point: Marker2D = $CustomerPoint
 
 func _ready() -> void:
 	queue_redraw()
@@ -51,35 +49,33 @@ func _draw_iso_box(
 	draw_polygon(PackedVector2Array([a - up, b - up, c - up, d - up]), PackedColorArray([top]))
 
 func _draw() -> void:
-	# Exact logical footprint: 3 x 1 of the production 72 x 36 isometric tiles.
-	var footprint: PackedVector2Array = _tile_points(0.0, 0.0, float(FOOTPRINT_W), float(FOOTPRINT_D))
+	# Exact logical footprint: one production 72 x 36 isometric tile.
+	var footprint: PackedVector2Array = _tile_points(0.0, 0.0, 1.0, 1.0)
 	draw_polygon(footprint, PackedColorArray([Color(0.20, 0.75, 1.0, 0.10)]))
 	for i in range(footprint.size()):
 		draw_line(footprint[i], footprint[(i + 1) % footprint.size()], Color(0.25, 0.85, 1.0, 0.75), 1.5)
 
-	# Proxy back shelf. This is deliberately simple: geometry first, final art later.
+	# Universal proxy back shelf. Final art will replace this without changing footprint.
 	_draw_iso_box(
-		0.08, 0.05, 2.84, 0.24, 70.0,
+		0.08, 0.05, 0.84, 0.24, 70.0,
 		Color("#44315e"), Color("#251b37"), Color("#322346")
 	)
 
-	# Proxy front counter. Kept fully inside the 3 x 1 logical footprint.
+	# Universal proxy front counter, fully contained inside the 1 x 1 tile.
 	_draw_iso_box(
-		0.08, 0.55, 2.84, 0.34, 35.0,
+		0.08, 0.55, 0.84, 0.34, 35.0,
 		Color("#315f78"), Color("#1f3d50"), Color("#274d63")
 	)
 
-	# Small counter glow to make visual seams easy to inspect between copies.
+	# Seam line makes repeated modules easy to inspect.
 	var glow_a: Vector2 = _iso(0.08, 0.55) - Vector2(0.0, 36.0)
-	var glow_b: Vector2 = _iso(2.92, 0.55) - Vector2(0.0, 36.0)
+	var glow_b: Vector2 = _iso(0.92, 0.55) - Vector2(0.0, 36.0)
 	draw_line(glow_a, glow_b, Color("#38d8ff"), 2.0)
 
 	if show_debug_markers:
-		_draw_marker(placement_anchor.position, Color("#f6d365"), 5.0)
-		_draw_marker(bartender_point.position, Color("#66e39a"), 5.0)
-		_draw_marker(customer_point_1.position, Color("#ff6fae"), 5.0)
-		_draw_marker(customer_point_2.position, Color("#ff6fae"), 5.0)
-		_draw_marker(customer_point_3.position, Color("#ff6fae"), 5.0)
+		_draw_marker(placement_anchor.position, Color("#f6d365"), 4.0)
+		_draw_marker(bartender_point.position, Color("#66e39a"), 4.0)
+		_draw_marker(customer_point.position, Color("#ff6fae"), 4.0)
 
 func _draw_marker(pos: Vector2, color: Color, radius: float) -> void:
 	draw_circle(pos, radius + 2.0, Color(0.0, 0.0, 0.0, 0.65))
@@ -95,8 +91,4 @@ func get_bartender_point() -> Vector2:
 	return bartender_point.position
 
 func get_customer_points() -> Array[Vector2]:
-	return [
-		customer_point_1.position,
-		customer_point_2.position,
-		customer_point_3.position
-	]
+	return [customer_point.position]
