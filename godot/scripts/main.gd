@@ -106,7 +106,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Run-Aware Bar Sprites v1 loaded.")
+	print("Nightclub City Clean Bar Asset Pipeline v1 loaded.")
 	_load_bar_sprite_assets()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
@@ -134,13 +134,23 @@ func _ready() -> void:
 	queue_redraw()
 
 func _load_bar_sprite_assets() -> void:
+	# Production rule: a bar tile owns exactly one grid cell. We intentionally
+	# do NOT load the legacy 144px left/middle/right run sprites here because
+	# neighboring isometric cells advance only 36px horizontally, which caused
+	# those opaque sprites to paint over one another.
+	#
+	# The clean pipeline uses two authored textures whose calibration edges are
+	# mapped onto the exact one-tile wall/counter edges below. They may extend
+	# upward, but never sideways into the neighboring tile.
 	bar_module_texture = _texture_from_base64_file("res://assets/bar/starter_bar_module_production.png.b64")
-	bar_single_texture = _texture_from_base64_file("res://assets/bar/starter_bar_single.png.b64")
-	bar_left_end_texture = _texture_from_base64_file("res://assets/bar/starter_bar_left_end.png.b64")
-	bar_middle_texture = _texture_from_base64_file("res://assets/bar/starter_bar_middle.png.b64")
-	bar_right_end_texture = _texture_from_base64_file("res://assets/bar/starter_bar_right_end.png.b64")
 	bar_front_texture = _texture_from_base64_file("res://assets/bar/front_counter_module.png.b64")
 	bar_shelf_texture = _texture_from_base64_file("res://assets/bar/back_shelf_module.png.b64")
+
+	# Kept null on purpose. These were the overlapping run-aware test sprites.
+	bar_single_texture = null
+	bar_left_end_texture = null
+	bar_middle_texture = null
+	bar_right_end_texture = null
 
 func _texture_from_base64_file(path: String) -> Texture2D:
 	if not FileAccess.file_exists(path):
@@ -994,31 +1004,9 @@ func _has_bar_segment_at(tile: Vector2i) -> bool:
 	return false
 
 func _draw_production_bar_module(obj: Dictionary) -> void:
-	var x: float = float(obj["x"])
-	var y: float = float(obj["y"])
-
-	if int(obj["y"]) == 0:
-		var texture: Texture2D = _bar_run_texture(obj)
-		if texture != null:
-			# Every run-aware sprite shares the exact same local wall anchor.
-			# The only difference is whether its left/right seam has end framing.
-			var target_wall_anchor: Vector2 = _iso(x, 0.0)
-			var local_wall_anchor: Vector2 = Vector2(72.0, 120.0)
-			draw_texture(
-				texture,
-				target_wall_anchor - local_wall_anchor
-			)
-			return
-
-	# Safe fallback if one of the run textures fails to load.
-	if bar_module_texture != null:
-		var fallback_anchor: Vector2 = _iso(x, y)
-		draw_texture(
-			bar_module_texture,
-			fallback_anchor - Vector2(64.0, 118.0)
-		)
-		return
-
+	# Draw one exact-grid module. The shelf is fitted to one wall tile and the
+	# counter is fitted to one customer-facing tile edge. Repeated modules can
+	# touch, but their opaque art no longer overlaps neighboring modules.
 	_draw_modular_bar_shelf(obj)
 	_draw_modular_bar_segment(obj)
 
