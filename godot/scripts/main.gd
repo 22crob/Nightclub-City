@@ -27,6 +27,7 @@ const WALL_H: float = 108.0
 @onready var rotate_button: Button = $HUD/SelectionPanel/Rotate
 @onready var delete_button: Button = $HUD/SelectionPanel/Delete
 @onready var done_button: Button = $HUD/SelectionPanel/Done
+@onready var stats_label: Label = $HUD/StatsPanel/Stats
 
 var dragging: bool = false
 var zoom_level: float = 1.0
@@ -38,12 +39,16 @@ var placed_objects: Array = []
 var selected_object_index: int = -1
 var moving_object_index: int = -1
 const SAVE_PATH: String = "user://club_layout.json"
+const ECONOMY_SAVE_PATH: String = "user://economy.json"
 const NPC_SPEED: float = 0.95
 const NPC_PERSONAL_SPACE: float = 0.42
 const NO_SPOT: Vector2 = Vector2(-99.0, -99.0)
 
 var npc_agents: Array = []
 var npc_cycle_count: int = 0
+var cash: int = 2500
+var xp: int = 0
+var completed_activities: int = 0
 
 var item_catalog: Dictionary = {
 	"Bars": [
@@ -85,7 +90,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Crowd Spacing v1 loaded.")
+	print("Nightclub City Economy + XP v1 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -103,7 +108,9 @@ func _ready() -> void:
 	delete_button.pressed.connect(_delete_selected_object)
 	done_button.pressed.connect(_deselect_object)
 	_load_layout()
+	_load_economy()
 	_initialize_npcs()
+	_update_stats_hud()
 	_set_category("Bars")
 	queue_redraw()
 
@@ -1013,6 +1020,7 @@ func _update_npcs(delta: float) -> void:
 		elif state == "activity":
 			npc["timer"] = float(npc["timer"]) - delta
 			if float(npc["timer"]) <= 0.0:
+				_complete_activity_reward(str(npc["activity"]))
 				npc["reserved_spot"] = NO_SPOT
 				npc["state"] = "leaving"
 				_set_npc_destination(npc, Vector2(10.6, 1.65))
@@ -1241,3 +1249,59 @@ func _is_static_nav_blocked(tile: Vector2i) -> bool:
 		return true
 
 	return false
+
+
+func _complete_activity_reward(activity: String) -> void:
+	var cash_reward: int = 0
+	var xp_reward: int = 0
+
+	if activity == "bar":
+		cash_reward = 18
+		xp_reward = 2
+	elif activity == "dance":
+		cash_reward = 6
+		xp_reward = 5
+	else:
+		cash_reward = 9
+		xp_reward = 3
+
+	cash += cash_reward
+	xp += xp_reward
+	completed_activities += 1
+	_update_stats_hud()
+	_save_economy()
+
+func _update_stats_hud() -> void:
+	stats_label.text = "$ " + str(cash) + "        XP  " + str(xp) + " / 100\nGuests generate cash + XP from activities"
+
+func _save_economy() -> void:
+	var save_data: Dictionary = {
+		"cash": cash,
+		"xp": xp,
+		"completed_activities": completed_activities
+	}
+
+	var file: FileAccess = FileAccess.open(ECONOMY_SAVE_PATH, FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify(save_data))
+		file.close()
+
+func _load_economy() -> void:
+	if not FileAccess.file_exists(ECONOMY_SAVE_PATH):
+		return
+
+	var file: FileAccess = FileAccess.open(ECONOMY_SAVE_PATH, FileAccess.READ)
+	if file == null:
+		return
+
+	var raw_text: String = file.get_as_text()
+	file.close()
+
+	var parsed: Variant = JSON.parse_string(raw_text)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+
+	var data: Dictionary = parsed
+	cash = int(data.get("cash", 2500))
+	xp = int(data.get("xp", 0))
+	completed_activities = int(data.get("completed_activities", 0))
