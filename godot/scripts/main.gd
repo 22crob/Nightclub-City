@@ -60,6 +60,7 @@ var current_level: int = 1
 var level_up_timer: float = 0.0
 var bar_front_texture: Texture2D
 var bar_shelf_texture: Texture2D
+var bar_module_texture: Texture2D
 const SINGLE_BAR_CALIBRATION: bool = true
 
 var item_catalog: Dictionary = {
@@ -100,7 +101,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Bar Wall Panel v1 loaded.")
+	print("Nightclub City Production Bar Module v1 loaded.")
 	_load_bar_sprite_assets()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
@@ -128,6 +129,7 @@ func _ready() -> void:
 	queue_redraw()
 
 func _load_bar_sprite_assets() -> void:
+	bar_module_texture = _texture_from_base64_file("res://assets/bar/starter_bar_module_production.png.b64")
 	bar_front_texture = _texture_from_base64_file("res://assets/bar/front_counter_module.png.b64")
 	bar_shelf_texture = _texture_from_base64_file("res://assets/bar/back_shelf_module.png.b64")
 
@@ -883,11 +885,6 @@ func _place_current_item(tile: Vector2i) -> void:
 	queue_redraw()
 
 func _draw_placed_objects() -> void:
-	# Draw wall-mounted back shelves first so counters always render in front.
-	for obj in placed_objects:
-		if str(obj["kind"]) == "bar" and str(obj["id"]) == "bar_segment":
-			_draw_modular_bar_shelf(obj)
-
 	for obj in placed_objects:
 		_draw_build_item(obj)
 
@@ -901,7 +898,7 @@ func _draw_build_item(obj: Dictionary) -> void:
 
 	if kind == "bar":
 		if str(obj["id"]) == "bar_segment":
-			_draw_modular_bar_segment(obj)
+			_draw_production_bar_module(obj)
 		else:
 			_draw_iso_box(
 				x,
@@ -937,6 +934,27 @@ func _draw_build_item(obj: Dictionary) -> void:
 		_draw_iso_box(x + 0.30, y + 0.30, 0.40, 0.40, 58.0, color.lightened(0.18), color.darkened(0.42), color.darkened(0.26))
 		var glow_pos: Vector2 = _iso(x + 0.5, y + 0.5) - Vector2(0, 62)
 		draw_circle(glow_pos, 8.0, color)
+
+func _draw_production_bar_module(obj: Dictionary) -> void:
+	var x: float = float(obj["x"])
+	var y: float = float(obj["y"])
+
+	# Calibration uses the top wall only. The production sprite was authored
+	# directly against the game's 72x36 projection:
+	# local wall edge (64,118) -> (100,136) == one game wall edge (36,18).
+	# Draw 1:1 with no scaling, stretching, shearing, or guessed offsets.
+	if int(obj["y"]) == 0 and bar_module_texture != null:
+		var target_wall_anchor: Vector2 = _iso(x, 0.0)
+		var local_wall_anchor: Vector2 = Vector2(64.0, 118.0)
+		draw_texture(
+			bar_module_texture,
+			target_wall_anchor - local_wall_anchor
+		)
+		return
+
+	# Safe fallback if the production texture fails to load.
+	_draw_modular_bar_shelf(obj)
+	_draw_modular_bar_segment(obj)
 
 func _draw_texture_snapped_to_edge(
 	texture: Texture2D,
