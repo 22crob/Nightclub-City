@@ -60,6 +60,7 @@ var current_level: int = 1
 var level_up_timer: float = 0.0
 var bar_front_texture: Texture2D
 var bar_shelf_texture: Texture2D
+const SINGLE_BAR_CALIBRATION: bool = true
 
 var item_catalog: Dictionary = {
 	"Bars": [
@@ -99,7 +100,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Real Bar Sprites v1 loaded.")
+	print("Nightclub City Single Bar Calibration v1 loaded.")
 	_load_bar_sprite_assets()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
@@ -118,6 +119,7 @@ func _ready() -> void:
 	delete_button.pressed.connect(_delete_selected_object)
 	done_button.pressed.connect(_deselect_object)
 	_load_layout()
+	_prepare_single_bar_calibration()
 	_load_economy()
 	current_level = _level_for_xp(xp)
 	_initialize_npcs()
@@ -150,6 +152,58 @@ func _texture_from_base64_file(path: String) -> Texture2D:
 		return null
 
 	return ImageTexture.create_from_image(image)
+
+func _prepare_single_bar_calibration() -> void:
+	if not SINGLE_BAR_CALIBRATION:
+		return
+
+	var first_bar: Dictionary = {}
+	var non_bar_objects: Array = []
+
+	for obj in placed_objects:
+		if str(obj["kind"]) == "bar" and str(obj["id"]) == "bar_segment":
+			if first_bar.is_empty():
+				first_bar = obj.duplicate(true)
+			continue
+
+		non_bar_objects.append(obj)
+
+	if first_bar.is_empty():
+		return
+
+	placed_objects = non_bar_objects
+
+	var calibration_tile: Vector2i = _find_single_bar_calibration_tile()
+	first_bar["x"] = calibration_tile.x
+	first_bar["y"] = calibration_tile.y
+	placed_objects.append(first_bar)
+	_save_layout()
+
+func _find_single_bar_calibration_tile() -> Vector2i:
+	var preferred_x: Array[int] = [6, 5, 7, 4, 8, 3, 9, 2, 1, 12, 13]
+
+	for x in preferred_x:
+		var tile: Vector2i = Vector2i(x, 0)
+		if x == 10 or x == 11:
+			continue
+		if not _can_place_dimensions(tile, 1, 1):
+			continue
+
+		var service_tile: Vector2i = Vector2i(x, 1)
+		var service_blocked: bool = false
+		for obj in placed_objects:
+			var ox: int = int(obj["x"])
+			var oy: int = int(obj["y"])
+			var ow: int = int(obj["w"])
+			var od: int = int(obj["d"])
+			if service_tile.x >= ox and service_tile.x < ox + ow and service_tile.y >= oy and service_tile.y < oy + od:
+				service_blocked = true
+				break
+
+		if not service_blocked:
+			return tile
+
+	return Vector2i(6, 0)
 
 func _process(delta: float) -> void:
 	anim_time += delta
@@ -556,6 +610,15 @@ func _select_item(index: int) -> void:
 
 	moving_object_index = -1
 	_deselect_object()
+	if SINGLE_BAR_CALIBRATION and str(item["kind"]) == "bar":
+		var existing_bar_count: int = 0
+		for obj in placed_objects:
+			if str(obj["kind"]) == "bar" and str(obj["id"]) == "bar_segment":
+				existing_bar_count += 1
+		if existing_bar_count > 0:
+			design_hint.text = "Single-bar calibration • select the existing bar to Move/Delete"
+			return
+
 	current_item = item.duplicate(true)
 	hover_tile = _resolve_placement_tile(_world_to_tile(get_global_mouse_position()))
 	if str(current_item["kind"]) == "bar":
@@ -696,6 +759,10 @@ func _can_place_bar_segment(tile: Vector2i, skip_index: int = -1) -> bool:
 		if _bar_tiles_connect(tile, other_tile):
 			touches_existing_run = true
 
+	if SINGLE_BAR_CALIBRATION:
+		# Temporary calibration pass: keep exactly one modular bar in the club.
+		return modular_bar_count == 0
+
 	if modular_bar_count == 0:
 		return true
 
@@ -708,6 +775,11 @@ func _is_bar_wall_tile(tile: Vector2i) -> bool:
 	# Do not use the top-left corner because it would visually create a turn.
 	if tile == Vector2i(0, 0):
 		return false
+
+	# Calibration uses only the top wall because the current sprite was drawn
+	# for this orientation. Multi-wall placement comes back after scale/alignment is locked.
+	if SINGLE_BAR_CALIBRATION:
+		return tile.y == 0 and tile.x != 10 and tile.x != 11
 
 	# Top wall. Leave the entrance opening clear.
 	if tile.y == 0:
@@ -866,6 +938,21 @@ func _draw_build_item(obj: Dictionary) -> void:
 		var glow_pos: Vector2 = _iso(x + 0.5, y + 0.5) - Vector2(0, 62)
 		draw_circle(glow_pos, 8.0, color)
 
+func _draw_top_wall_bar_texture(texture: Texture2D, anchor: Vector2, size: Vector2) -> void:
+	# Match the sprite's horizontal axis to the game's 2:1 isometric grid.
+	var iso_transform: Transform2D = Transform2D(
+		Vector2(1.0, 0.5),
+		Vector2(0.0, 1.0),
+		anchor
+	)
+	draw_set_transform_matrix(iso_transform)
+	draw_texture_rect(
+		texture,
+		Rect2(Vector2(-size.x * 0.5, -size.y), size),
+		false
+	)
+	draw_set_transform_matrix(Transform2D.IDENTITY)
+
 func _draw_modular_bar_shelf(obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
 	var y: float = float(obj["y"])
@@ -874,10 +961,10 @@ func _draw_modular_bar_shelf(obj: Dictionary) -> void:
 	if bar_shelf_texture != null:
 		if int(obj["y"]) == 0:
 			var top_anchor: Vector2 = _iso(x + 0.5, 0.0)
-			draw_texture_rect(
+			_draw_top_wall_bar_texture(
 				bar_shelf_texture,
-				Rect2(top_anchor + Vector2(-31, -82), Vector2(62, 82)),
-				false
+				top_anchor,
+				Vector2(50, 68)
 			)
 			return
 		elif int(obj["x"]) == 0:
@@ -908,11 +995,11 @@ func _draw_modular_bar_segment(obj: Dictionary) -> void:
 		)
 
 		if bar_front_texture != null:
-			var top_counter_anchor: Vector2 = _iso(x + 0.5, y + 1.0)
-			draw_texture_rect(
+			var top_counter_anchor: Vector2 = _iso(x + 0.5, y + 1.30)
+			_draw_top_wall_bar_texture(
 				bar_front_texture,
-				Rect2(top_counter_anchor + Vector2(-33, -79), Vector2(66, 79)),
-				false
+				top_counter_anchor,
+				Vector2(52, 64)
 			)
 			return
 
