@@ -573,6 +573,9 @@ func _can_place_bar_segment(tile: Vector2i, skip_index: int = -1) -> bool:
 	if _is_static_nav_blocked(tile):
 		return false
 
+	if not _bar_service_space_open(tile, skip_index):
+		return false
+
 	if not _can_place_dimensions(tile, 1, 1, skip_index):
 		return false
 
@@ -616,6 +619,34 @@ func _is_bar_wall_tile(tile: Vector2i) -> bool:
 		return true
 
 	return false
+
+func _bar_service_space_open(tile: Vector2i, skip_index: int = -1) -> bool:
+	var service_tile: Vector2i = tile
+
+	if tile.y == 0:
+		service_tile = Vector2i(tile.x, 1)
+	elif tile.x == 0:
+		service_tile = Vector2i(1, tile.y)
+
+	if not _is_nav_tile_valid(service_tile):
+		return false
+	if _is_static_nav_blocked(service_tile):
+		return false
+
+	for i in range(placed_objects.size()):
+		if i == skip_index:
+			continue
+
+		var obj: Dictionary = placed_objects[i]
+		var ox: int = int(obj["x"])
+		var oy: int = int(obj["y"])
+		var ow: int = int(obj["w"])
+		var od: int = int(obj["d"])
+
+		if service_tile.x >= ox and service_tile.x < ox + ow and service_tile.y >= oy and service_tile.y < oy + od:
+			return false
+
+	return true
 
 func _bar_tiles_connect(a: Vector2i, b: Vector2i) -> bool:
 	if a.y == 0 and b.y == 0:
