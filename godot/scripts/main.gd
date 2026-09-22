@@ -9,10 +9,52 @@ const WALL_H: float = 108.0
 @onready var camera: Camera2D = $Camera2D
 @onready var zoom_out_button: Button = $HUD/ZoomControls/ZoomOut
 @onready var zoom_in_button: Button = $HUD/ZoomControls/ZoomIn
+@onready var design_button: Button = $HUD/DesignButton
+@onready var design_drawer: ColorRect = $HUD/DesignDrawer
+@onready var close_design_button: Button = $HUD/DesignDrawer/Close
+@onready var bars_button: Button = $HUD/DesignDrawer/Bars
+@onready var seating_button: Button = $HUD/DesignDrawer/Seating
+@onready var dance_button: Button = $HUD/DesignDrawer/Dance
+@onready var walls_button: Button = $HUD/DesignDrawer/Walls
+@onready var decor_button: Button = $HUD/DesignDrawer/Decor
+@onready var item_button_1: Button = $HUD/DesignDrawer/Item1
+@onready var item_button_2: Button = $HUD/DesignDrawer/Item2
+@onready var item_button_3: Button = $HUD/DesignDrawer/Item3
+@onready var design_hint: Label = $HUD/DesignDrawer/Hint
 
 var dragging: bool = false
 var zoom_level: float = 1.0
 var anim_time: float = 0.0
+var selected_category: String = "Bars"
+var current_item: Dictionary = {}
+var hover_tile: Vector2i = Vector2i(-1, -1)
+var placed_objects: Array = []
+
+var item_catalog: Dictionary = {
+	"Bars": [
+		{"id": "starter_bar", "name": "Starter Bar", "w": 1, "d": 3, "kind": "bar", "color": Color("#2f6582")},
+		{"id": "compact_bar", "name": "Compact Bar", "w": 2, "d": 2, "kind": "bar", "color": Color("#5b337b")},
+		{"id": "neon_bar", "name": "Neon Bar", "w": 1, "d": 4, "kind": "bar", "color": Color("#315f78")}
+	],
+	"Seating": [
+		{"id": "booth", "name": "Lounge Booth", "w": 2, "d": 1, "kind": "seat", "color": Color("#5b2d70")},
+		{"id": "sofa", "name": "Club Sofa", "w": 2, "d": 1, "kind": "seat", "color": Color("#294a70")},
+		{"id": "chair", "name": "Accent Chair", "w": 1, "d": 1, "kind": "seat", "color": Color("#7a3f82")}
+	],
+	"Dance": [
+		{"id": "dance_tile", "name": "Dance Tile", "w": 1, "d": 1, "kind": "dance", "color": Color("#7c36ff")},
+		{"id": "dance_block", "name": "2x2 Dance Floor", "w": 2, "d": 2, "kind": "dance", "color": Color("#ff3ebf")}
+	],
+	"Walls": [
+		{"id": "neon_divider", "name": "Neon Divider", "w": 2, "d": 1, "kind": "wall", "color": Color("#2ddfff")},
+		{"id": "purple_divider", "name": "Purple Divider", "w": 2, "d": 1, "kind": "wall", "color": Color("#a13dff")}
+	],
+	"Decor": [
+		{"id": "round_table", "name": "Round Table", "w": 1, "d": 1, "kind": "table", "color": Color("#4b335e")},
+		{"id": "neon_pillar", "name": "Neon Pillar", "w": 1, "d": 1, "kind": "pillar", "color": Color("#28dfff")},
+		{"id": "purple_pillar", "name": "Purple Pillar", "w": 1, "d": 1, "kind": "pillar", "color": Color("#c24cff")}
+	]
+}
 
 var npc_positions: Array[Vector2] = [
 	Vector2(5.3, 5.3),
@@ -41,9 +83,20 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Level 1 safe visual pass loaded.")
+	print("Nightclub City Design Mode v1 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
+	design_button.pressed.connect(_toggle_design_drawer)
+	close_design_button.pressed.connect(_close_design_drawer)
+	bars_button.pressed.connect(_set_category.bind("Bars"))
+	seating_button.pressed.connect(_set_category.bind("Seating"))
+	dance_button.pressed.connect(_set_category.bind("Dance"))
+	walls_button.pressed.connect(_set_category.bind("Walls"))
+	decor_button.pressed.connect(_set_category.bind("Decor"))
+	item_button_1.pressed.connect(_select_item.bind(0))
+	item_button_2.pressed.connect(_select_item.bind(1))
+	item_button_3.pressed.connect(_select_item.bind(2))
+	_set_category("Bars")
 	queue_redraw()
 
 func _process(delta: float) -> void:
@@ -51,15 +104,36 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		_cancel_placement()
+		return
+
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			dragging = event.pressed
-		elif event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 			_set_zoom(zoom_level + 0.08)
+			return
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 			_set_zoom(zoom_level - 0.08)
-	elif event is InputEventMouseMotion and dragging:
-		camera.position -= event.relative / camera.zoom.x
+			return
+
+		if not current_item.is_empty():
+			if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+				hover_tile = _world_to_tile(get_global_mouse_position())
+				if _can_place_current(hover_tile):
+					_place_current_item(hover_tile)
+			elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+				_cancel_placement()
+			return
+
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			dragging = event.pressed
+
+	elif event is InputEventMouseMotion:
+		if not current_item.is_empty():
+			hover_tile = _world_to_tile(get_global_mouse_position())
+			queue_redraw()
+		elif dragging:
+			camera.position -= event.relative / camera.zoom.x
 
 func _set_zoom(value: float) -> void:
 	zoom_level = clamp(value, 0.70, 1.55)
@@ -96,8 +170,10 @@ func _draw() -> void:
 	_draw_bar()
 	_draw_lounges()
 	_draw_tables()
+	_draw_placed_objects()
 	_draw_npcs()
 	_draw_light_accents()
+	_draw_placement_preview()
 
 func _draw_room_shadow() -> void:
 	var shadow: PackedVector2Array = _tile_points(-0.3, -0.3, float(CLUB_W) + 0.6, float(CLUB_H) + 0.6)
@@ -322,3 +398,136 @@ func _draw_light_accents() -> void:
 	var pulse: float = 0.55 + sin(anim_time * 1.6) * 0.10
 	draw_arc(center, 160.0, PI * 1.10, PI * 1.90, 44, Color(0.52, 0.20, 1.0, 0.10 * pulse), 4.0)
 	draw_arc(center, 198.0, PI * 1.08, PI * 1.92, 44, Color(0.10, 0.80, 1.0, 0.06 * pulse), 3.0)
+
+
+func _toggle_design_drawer() -> void:
+	design_drawer.visible = not design_drawer.visible
+	if not design_drawer.visible:
+		_cancel_placement()
+
+func _close_design_drawer() -> void:
+	design_drawer.visible = false
+	_cancel_placement()
+
+func _set_category(category: String) -> void:
+	selected_category = category
+	_cancel_placement()
+	var items: Array = item_catalog[category]
+	var buttons: Array[Button] = [item_button_1, item_button_2, item_button_3]
+	for i in range(buttons.size()):
+		if i < items.size():
+			buttons[i].visible = true
+			buttons[i].text = str(items[i]["name"])
+		else:
+			buttons[i].visible = false
+	design_hint.text = category + " selected • choose an item to place"
+
+func _select_item(index: int) -> void:
+	var items: Array = item_catalog[selected_category]
+	if index < 0 or index >= items.size():
+		return
+	current_item = items[index].duplicate(true)
+	hover_tile = _world_to_tile(get_global_mouse_position())
+	design_hint.text = str(current_item["name"]) + " selected • click floor to place • right-click/Esc cancels"
+	queue_redraw()
+
+func _cancel_placement() -> void:
+	current_item = {}
+	hover_tile = Vector2i(-1, -1)
+	if design_drawer.visible:
+		design_hint.text = selected_category + " selected • choose an item to place"
+	queue_redraw()
+
+func _world_to_tile(world_pos: Vector2) -> Vector2i:
+	var tile_x: float = world_pos.y / TILE_H + world_pos.x / TILE_W
+	var tile_y: float = world_pos.y / TILE_H - world_pos.x / TILE_W
+	return Vector2i(floori(tile_x), floori(tile_y))
+
+func _can_place_current(tile: Vector2i) -> bool:
+	if current_item.is_empty():
+		return false
+	var width: int = int(current_item["w"])
+	var depth: int = int(current_item["d"])
+	if tile.x < 0 or tile.y < 0:
+		return false
+	if tile.x + width > CLUB_W or tile.y + depth > CLUB_H:
+		return false
+
+	for obj in placed_objects:
+		var ox: int = int(obj["x"])
+		var oy: int = int(obj["y"])
+		var ow: int = int(obj["w"])
+		var od: int = int(obj["d"])
+		var overlaps: bool = tile.x < ox + ow and tile.x + width > ox and tile.y < oy + od and tile.y + depth > oy
+		if overlaps:
+			return false
+	return true
+
+func _place_current_item(tile: Vector2i) -> void:
+	if not _can_place_current(tile):
+		return
+	var placed: Dictionary = current_item.duplicate(true)
+	placed["x"] = tile.x
+	placed["y"] = tile.y
+	placed_objects.append(placed)
+	design_hint.text = str(current_item["name"]) + " placed • click again to place another"
+	queue_redraw()
+
+func _draw_placed_objects() -> void:
+	for obj in placed_objects:
+		_draw_build_item(obj)
+
+func _draw_build_item(obj: Dictionary) -> void:
+	var x: float = float(obj["x"])
+	var y: float = float(obj["y"])
+	var width: float = float(obj["w"])
+	var depth: float = float(obj["d"])
+	var kind: String = str(obj["kind"])
+	var color: Color = obj["color"]
+
+	if kind == "bar":
+		_draw_iso_box(x, y, width, depth, 34.0, color.lightened(0.08), color.darkened(0.34), color.darkened(0.18))
+		var a: Vector2 = _iso(x + 0.10, y + depth) - Vector2(0, 22)
+		var b: Vector2 = _iso(x + width - 0.10, y + depth) - Vector2(0, 22)
+		draw_line(a, b, Color("#2de3ff"), 2.5)
+	elif kind == "seat":
+		_draw_iso_box(x, y, width, depth, 20.0, color.lightened(0.10), color.darkened(0.30), color.darkened(0.15))
+		_draw_iso_box(x + 0.08, y, maxf(0.75, width - 0.16), 0.28, 34.0, color.lightened(0.04), color.darkened(0.34), color.darkened(0.20))
+	elif kind == "dance":
+		for dy in range(int(depth)):
+			for dx in range(int(width)):
+				var c: Color = color
+				if (dx + dy) % 2 == 1:
+					c = color.lightened(0.16)
+				draw_polygon(_tile_points(x + dx, y + dy, 1.0, 1.0), PackedColorArray([c.darkened(0.16)]))
+				var tile: PackedVector2Array = _tile_points(x + dx, y + dy, 1.0, 1.0)
+				for i in range(4):
+					draw_line(tile[i], tile[(i + 1) % 4], c.lightened(0.18), 1.5)
+	elif kind == "wall":
+		_draw_iso_box(x, y, width, depth, 64.0, color.darkened(0.25), color.darkened(0.50), color.darkened(0.36))
+		var wall_a: Vector2 = _iso(x, y + depth) - Vector2(0, 48)
+		var wall_b: Vector2 = _iso(x + width, y + depth) - Vector2(0, 48)
+		draw_line(wall_a, wall_b, color, 3.0)
+	elif kind == "table":
+		_draw_round_table(x + 0.5, y + 0.5, color)
+	elif kind == "pillar":
+		_draw_iso_box(x + 0.30, y + 0.30, 0.40, 0.40, 58.0, color.lightened(0.18), color.darkened(0.42), color.darkened(0.26))
+		var glow_pos: Vector2 = _iso(x + 0.5, y + 0.5) - Vector2(0, 62)
+		draw_circle(glow_pos, 8.0, color)
+
+func _draw_placement_preview() -> void:
+	if current_item.is_empty() or hover_tile.x < 0 or hover_tile.y < 0:
+		return
+	var width: float = float(current_item["w"])
+	var depth: float = float(current_item["d"])
+	var valid: bool = _can_place_current(hover_tile)
+	var preview_color: Color = Color(0.18, 0.95, 0.58, 0.28)
+	var line_color: Color = Color("#55f0a0")
+	if not valid:
+		preview_color = Color(1.0, 0.20, 0.32, 0.28)
+		line_color = Color("#ff4a63")
+
+	var footprint: PackedVector2Array = _tile_points(float(hover_tile.x), float(hover_tile.y), width, depth)
+	draw_polygon(footprint, PackedColorArray([preview_color]))
+	for i in range(4):
+		draw_line(footprint[i], footprint[(i + 1) % 4], line_color, 2.5)
