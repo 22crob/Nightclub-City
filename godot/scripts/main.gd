@@ -97,7 +97,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Modular Bar Visual Polish v1 loaded.")
+	print("Nightclub City Bar Bartender Lane v1 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -855,36 +855,49 @@ func _draw_modular_bar_segment(obj: Dictionary) -> void:
 	# Placement remains 1x1, but the visible counter is slimmer so it reads like
 	# a service counter instead of a full tile-sized cube.
 	if int(obj["y"]) == 0:
+		# Back shelf stays flush to the wall. This darker strip is the bartender
+		# workspace between the shelf and the customer-facing counter.
+		draw_polygon(
+			_tile_points(x, y + 0.10, 1.0, 0.52),
+			PackedColorArray([Color(0.055, 0.045, 0.075, 0.72)])
+		)
+
 		_draw_iso_box(
 			x,
-			y + 0.36,
+			y + 0.66,
 			1.0,
-			0.64,
-			27.0,
+			0.34,
+			24.0,
 			color.lightened(0.10),
 			color.darkened(0.38),
 			color.darkened(0.22)
 		)
 
-		var front_a: Vector2 = _iso(x, y + 1.0) - Vector2(0, 17)
-		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 17)
+		var front_a: Vector2 = _iso(x, y + 1.0) - Vector2(0, 15)
+		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 15)
 		draw_line(front_a, front_b, Color("#2de3ff"), 2.5)
 		draw_line(front_a - Vector2(0, 4), front_b - Vector2(0, 4), Color("#c64cff"), 1.5)
 
 	elif int(obj["x"]) == 0:
+		# Same bartender workspace when the bar runs along the left wall.
+		draw_polygon(
+			_tile_points(x + 0.10, y, 0.52, 1.0),
+			PackedColorArray([Color(0.055, 0.045, 0.075, 0.72)])
+		)
+
 		_draw_iso_box(
-			x + 0.36,
+			x + 0.66,
 			y,
-			0.64,
+			0.34,
 			1.0,
-			27.0,
+			24.0,
 			color.lightened(0.10),
 			color.darkened(0.38),
 			color.darkened(0.22)
 		)
 
-		var front_a: Vector2 = _iso(x + 1.0, y) - Vector2(0, 17)
-		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 17)
+		var front_a: Vector2 = _iso(x + 1.0, y) - Vector2(0, 15)
+		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 15)
 		draw_line(front_a, front_b, Color("#2de3ff"), 2.5)
 		draw_line(front_a - Vector2(0, 4), front_b - Vector2(0, 4), Color("#c64cff"), 1.5)
 
@@ -1225,7 +1238,8 @@ func _append_bar_spots(targets: Array[Vector2], obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
 	var y: float = float(obj["y"])
 
-	# One repeated module = one customer service position.
+	# One repeated module = one customer service position. The bartender lane is
+	# inside the module; customers still approach from the open front side.
 	if int(obj["y"]) == 0:
 		targets.append(_clamp_activity_spot(Vector2(x + 0.5, y + 1.45)))
 	elif int(obj["x"]) == 0:
@@ -1233,6 +1247,17 @@ func _append_bar_spots(targets: Array[Vector2], obj: Dictionary) -> void:
 	else:
 		# Legacy/test bars that are not wall modules keep a safe fallback spot.
 		targets.append(_clamp_activity_spot(Vector2(x + 1.45, y + 0.5)))
+
+func _bar_bartender_position(obj: Dictionary) -> Vector2:
+	var x: float = float(obj["x"])
+	var y: float = float(obj["y"])
+
+	if int(obj["y"]) == 0:
+		return Vector2(x + 0.5, y + 0.40)
+	if int(obj["x"]) == 0:
+		return Vector2(x + 0.40, y + 0.5)
+
+	return _object_center(obj)
 
 func _append_seat_spots(targets: Array[Vector2], obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
