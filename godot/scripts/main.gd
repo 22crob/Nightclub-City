@@ -382,6 +382,7 @@ func _draw_npcs() -> void:
 		var state: String = str(npc["state"])
 		var activity: String = str(npc["activity"])
 		var dancing: bool = state == "activity" and activity == "dance"
+		var shirt_color: Color = npc["color"]
 		var bob: float = 0.0
 
 		if state == "entering" or state == "walking" or state == "leaving":
@@ -389,7 +390,7 @@ func _draw_npcs() -> void:
 		elif dancing:
 			bob = sin(anim_time * 3.0 + float(i) * 0.7) * 1.8
 
-		_draw_avatar(screen_pos - Vector2(0, bob), npc["color"], dancing)
+		_draw_avatar(screen_pos - Vector2(0, bob), shirt_color, dancing)
 
 func _draw_avatar(pos: Vector2, shirt: Color, dancing: bool) -> void:
 	var skin: Color = Color("#e0aa84")
@@ -763,7 +764,7 @@ func _initialize_npcs() -> void:
 			"activity": activity,
 			"activity_target": _activity_target(activity, i),
 			"timer": 0.0,
-			"spawn_delay": float(i) * 0.75,
+			"spawn_delay": 0.15 + float(i) * 0.75,
 			"color": npc_colors[i]
 		}
 		npc_agents.append(agent)
