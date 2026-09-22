@@ -1,0 +1,37 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/asset_test_room.gd" id="1_test"]
+[ext_resource type="PackedScene" path="res://scenes/furniture/bar_01.tscn" id="2_bar"]
+
+[node name="AssetTestRoom" type="Node2D"]
+script = ExtResource("1_test")
+bar_scene = ExtResource("2_bar")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="Title" type="Label" parent="HUD"]
+offset_left = 22.0
+offset_top = 18.0
+offset_right = 520.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.97, 0.93, 1, 1)
+theme_override_font_sizes/font_size = 22
+text = "ASSET TEST ROOM — MASTER BAR 01"
+
+[node name="Subtitle" type="Label" parent="HUD"]
+offset_left = 23.0
+offset_top = 52.0
+offset_right = 710.0
+offset_bottom = 82.0
+theme_override_colors/font_color = Color(0.65, 0.73, 0.9, 1)
+theme_override_font_sizes/font_size = 13
+text = "72x36 production grid • 3x1 footprint per bar • three copies touching edge-to-edge"
+
+[node name="Status" type="Label" parent="HUD"]
+offset_left = 22.0
+offset_top = 646.0
+offset_right = 760.0
+offset_bottom = 700.0
+theme_override_colors/font_color = Color(0.82, 0.86, 0.96, 1)
+theme_override_font_sizes/font_size = 12
+text = "YELLOW  Placement Anchor      GREEN  Bartender Point      PINK  Customer Points\nPASS = no gaps, no overlap, correct wall fit, all markers remain outside solid geometry"
