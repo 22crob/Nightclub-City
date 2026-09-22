@@ -21,6 +21,12 @@ const WALL_H: float = 108.0
 @onready var item_button_2: Button = $HUD/DesignDrawer/Item2
 @onready var item_button_3: Button = $HUD/DesignDrawer/Item3
 @onready var design_hint: Label = $HUD/DesignDrawer/Hint
+@onready var selection_panel: ColorRect = $HUD/SelectionPanel
+@onready var selected_name: Label = $HUD/SelectionPanel/SelectedName
+@onready var move_button: Button = $HUD/SelectionPanel/Move
+@onready var rotate_button: Button = $HUD/SelectionPanel/Rotate
+@onready var delete_button: Button = $HUD/SelectionPanel/Delete
+@onready var done_button: Button = $HUD/SelectionPanel/Done
 
 var dragging: bool = false
 var zoom_level: float = 1.0
@@ -29,6 +35,9 @@ var selected_category: String = "Bars"
 var current_item: Dictionary = {}
 var hover_tile: Vector2i = Vector2i(-1, -1)
 var placed_objects: Array = []
+var selected_object_index: int = -1
+var moving_object_index: int = -1
+const SAVE_PATH: String = "user://club_layout.json"
 
 var item_catalog: Dictionary = {
 	"Bars": [
@@ -96,6 +105,11 @@ func _ready() -> void:
 	item_button_1.pressed.connect(_select_item.bind(0))
 	item_button_2.pressed.connect(_select_item.bind(1))
 	item_button_3.pressed.connect(_select_item.bind(2))
+	move_button.pressed.connect(_move_selected_object)
+	rotate_button.pressed.connect(_rotate_selected_object)
+	delete_button.pressed.connect(_delete_selected_object)
+	done_button.pressed.connect(_deselect_object)
+	_load_layout()
 	_set_category("Bars")
 	queue_redraw()
 
@@ -105,7 +119,10 @@ func _process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		_cancel_placement()
+		if not current_item.is_empty():
+			_cancel_placement()
+		else:
+			_deselect_object()
 		return
 
 	if event is InputEventMouseButton:
@@ -123,6 +140,15 @@ func _unhandled_input(event: InputEvent) -> void:
 					_place_current_item(hover_tile)
 			elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 				_cancel_placement()
+			return
+
+		if design_drawer.visible and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			var clicked_tile: Vector2i = _world_to_tile(get_global_mouse_position())
+			var object_index: int = _find_object_at_tile(clicked_tile)
+			if object_index >= 0:
+				_select_placed_object(object_index)
+			else:
+				_deselect_object()
 			return
 
 		if event.button_index == MOUSE_BUTTON_LEFT:
@@ -171,6 +197,7 @@ func _draw() -> void:
 	_draw_lounges()
 	_draw_tables()
 	_draw_placed_objects()
+	_draw_selection_highlight()
 	_draw_npcs()
 	_draw_light_accents()
 	_draw_placement_preview()
@@ -404,10 +431,12 @@ func _toggle_design_drawer() -> void:
 	design_drawer.visible = not design_drawer.visible
 	if not design_drawer.visible:
 		_cancel_placement()
+		_deselect_object()
 
 func _close_design_drawer() -> void:
 	design_drawer.visible = false
 	_cancel_placement()
+	_deselect_object()
 
 func _set_category(category: String) -> void:
 	selected_category = category
@@ -446,14 +475,23 @@ func _world_to_tile(world_pos: Vector2) -> Vector2i:
 func _can_place_current(tile: Vector2i) -> bool:
 	if current_item.is_empty():
 		return false
-	var width: int = int(current_item["w"])
-	var depth: int = int(current_item["d"])
+	return _can_place_dimensions(
+		tile,
+		int(current_item["w"]),
+		int(current_item["d"]),
+		moving_object_index
+	)
+
+func _can_place_dimensions(tile: Vector2i, width: int, depth: int, skip_index: int = -1) -> bool:
 	if tile.x < 0 or tile.y < 0:
 		return false
 	if tile.x + width > CLUB_W or tile.y + depth > CLUB_H:
 		return false
 
-	for obj in placed_objects:
+	for i in range(placed_objects.size()):
+		if i == skip_index:
+			continue
+		var obj: Dictionary = placed_objects[i]
 		var ox: int = int(obj["x"])
 		var oy: int = int(obj["y"])
 		var ow: int = int(obj["w"])
@@ -466,11 +504,25 @@ func _can_place_current(tile: Vector2i) -> bool:
 func _place_current_item(tile: Vector2i) -> void:
 	if not _can_place_current(tile):
 		return
+
+	if moving_object_index >= 0 and moving_object_index < placed_objects.size():
+		placed_objects[moving_object_index]["x"] = tile.x
+		placed_objects[moving_object_index]["y"] = tile.y
+		selected_object_index = moving_object_index
+		moving_object_index = -1
+		current_item = {}
+		hover_tile = Vector2i(-1, -1)
+		_refresh_selection_panel()
+		_save_layout()
+		queue_redraw()
+		return
+
 	var placed: Dictionary = current_item.duplicate(true)
 	placed["x"] = tile.x
 	placed["y"] = tile.y
 	placed_objects.append(placed)
 	design_hint.text = str(current_item["name"]) + " placed • click again to place another"
+	_save_layout()
 	queue_redraw()
 
 func _draw_placed_objects() -> void:
@@ -531,3 +583,154 @@ func _draw_placement_preview() -> void:
 	draw_polygon(footprint, PackedColorArray([preview_color]))
 	for i in range(4):
 		draw_line(footprint[i], footprint[(i + 1) % 4], line_color, 2.5)
+
+
+func _find_object_at_tile(tile: Vector2i) -> int:
+	var found: int = -1
+	for i in range(placed_objects.size()):
+		var obj: Dictionary = placed_objects[i]
+		var ox: int = int(obj["x"])
+		var oy: int = int(obj["y"])
+		var ow: int = int(obj["w"])
+		var od: int = int(obj["d"])
+		if tile.x >= ox and tile.x < ox + ow and tile.y >= oy and tile.y < oy + od:
+			found = i
+	return found
+
+func _select_placed_object(index: int) -> void:
+	if index < 0 or index >= placed_objects.size():
+		return
+	selected_object_index = index
+	moving_object_index = -1
+	current_item = {}
+	hover_tile = Vector2i(-1, -1)
+	_refresh_selection_panel()
+	queue_redraw()
+
+func _deselect_object() -> void:
+	selected_object_index = -1
+	moving_object_index = -1
+	selection_panel.visible = false
+	queue_redraw()
+
+func _refresh_selection_panel() -> void:
+	if selected_object_index < 0 or selected_object_index >= placed_objects.size():
+		selection_panel.visible = false
+		return
+	selection_panel.visible = true
+	var obj: Dictionary = placed_objects[selected_object_index]
+	selected_name.text = str(obj["name"])
+
+func _move_selected_object() -> void:
+	if selected_object_index < 0 or selected_object_index >= placed_objects.size():
+		return
+	moving_object_index = selected_object_index
+	current_item = placed_objects[selected_object_index].duplicate(true)
+	hover_tile = Vector2i(int(current_item["x"]), int(current_item["y"]))
+	design_hint.text = "Moving " + str(current_item["name"]) + " • click a new tile • Esc cancels"
+	queue_redraw()
+
+func _rotate_selected_object() -> void:
+	if selected_object_index < 0 or selected_object_index >= placed_objects.size():
+		return
+
+	var obj: Dictionary = placed_objects[selected_object_index]
+	var old_w: int = int(obj["w"])
+	var old_d: int = int(obj["d"])
+	var tile: Vector2i = Vector2i(int(obj["x"]), int(obj["y"]))
+	var new_w: int = old_d
+	var new_d: int = old_w
+
+	if not _can_place_dimensions(tile, new_w, new_d, selected_object_index):
+		if design_drawer.visible:
+			design_hint.text = "Not enough room to rotate " + str(obj["name"])
+		return
+
+	placed_objects[selected_object_index]["w"] = new_w
+	placed_objects[selected_object_index]["d"] = new_d
+	_save_layout()
+	_refresh_selection_panel()
+	queue_redraw()
+
+func _delete_selected_object() -> void:
+	if selected_object_index < 0 or selected_object_index >= placed_objects.size():
+		return
+	placed_objects.remove_at(selected_object_index)
+	selected_object_index = -1
+	moving_object_index = -1
+	selection_panel.visible = false
+	if design_drawer.visible:
+		design_hint.text = "Item deleted • choose another item or select an existing object"
+	_save_layout()
+	queue_redraw()
+
+func _draw_selection_highlight() -> void:
+	if selected_object_index < 0 or selected_object_index >= placed_objects.size():
+		return
+	var obj: Dictionary = placed_objects[selected_object_index]
+	var footprint: PackedVector2Array = _tile_points(
+		float(obj["x"]),
+		float(obj["y"]),
+		float(obj["w"]),
+		float(obj["d"])
+	)
+	draw_polygon(footprint, PackedColorArray([Color(0.20, 0.82, 1.0, 0.16)]))
+	for i in range(4):
+		draw_line(footprint[i], footprint[(i + 1) % 4], Color("#58dcff"), 3.0)
+
+func _save_layout() -> void:
+	var save_data: Array = []
+	for obj in placed_objects:
+		var color: Color = obj["color"]
+		save_data.append({
+			"id": str(obj["id"]),
+			"name": str(obj["name"]),
+			"kind": str(obj["kind"]),
+			"w": int(obj["w"]),
+			"d": int(obj["d"]),
+			"x": int(obj["x"]),
+			"y": int(obj["y"]),
+			"color": [color.r, color.g, color.b, color.a]
+		})
+
+	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify(save_data))
+		file.close()
+
+func _load_layout() -> void:
+	if not FileAccess.file_exists(SAVE_PATH):
+		return
+
+	var file: FileAccess = FileAccess.open(SAVE_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var raw_text: String = file.get_as_text()
+	file.close()
+
+	var parsed: Variant = JSON.parse_string(raw_text)
+	if typeof(parsed) != TYPE_ARRAY:
+		return
+
+	placed_objects.clear()
+	for raw in parsed:
+		if typeof(raw) != TYPE_DICTIONARY:
+			continue
+		var raw_obj: Dictionary = raw
+		var color_values: Array = raw_obj.get("color", [1.0, 1.0, 1.0, 1.0])
+		var restored_color: Color = Color(
+			float(color_values[0]),
+			float(color_values[1]),
+			float(color_values[2]),
+			float(color_values[3])
+		)
+		placed_objects.append({
+			"id": str(raw_obj.get("id", "saved_item")),
+			"name": str(raw_obj.get("name", "Saved Item")),
+			"kind": str(raw_obj.get("kind", "decor")),
+			"w": int(raw_obj.get("w", 1)),
+			"d": int(raw_obj.get("d", 1)),
+			"x": int(raw_obj.get("x", 0)),
+			"y": int(raw_obj.get("y", 0)),
+			"color": restored_color
+		})
