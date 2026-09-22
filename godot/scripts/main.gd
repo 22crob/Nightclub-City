@@ -97,7 +97,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Modular Bar v1 loaded.")
+	print("Nightclub City Modular Bar v2 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -151,7 +151,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 		if not current_item.is_empty():
 			if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-				hover_tile = _world_to_tile(get_global_mouse_position())
+				hover_tile = _resolve_placement_tile(_world_to_tile(get_global_mouse_position()))
 				if _can_place_current(hover_tile):
 					_place_current_item(hover_tile)
 			elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
@@ -172,7 +172,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	elif event is InputEventMouseMotion:
 		if not current_item.is_empty():
-			hover_tile = _world_to_tile(get_global_mouse_position())
+			hover_tile = _resolve_placement_tile(_world_to_tile(get_global_mouse_position()))
 			queue_redraw()
 		elif dragging:
 			camera.position -= event.relative / camera.zoom.x
@@ -532,7 +532,7 @@ func _select_item(index: int) -> void:
 	moving_object_index = -1
 	_deselect_object()
 	current_item = item.duplicate(true)
-	hover_tile = _world_to_tile(get_global_mouse_position())
+	hover_tile = _resolve_placement_tile(_world_to_tile(get_global_mouse_position()))
 	if str(current_item["kind"]) == "bar":
 		design_hint.text = "Bar Segment • place against a wall • add the next segment directly beside it"
 	else:
@@ -551,6 +551,80 @@ func _world_to_tile(world_pos: Vector2) -> Vector2i:
 	var tile_x: float = world_pos.y / TILE_H + world_pos.x / TILE_W
 	var tile_y: float = world_pos.y / TILE_H - world_pos.x / TILE_W
 	return Vector2i(int(floor(tile_x)), int(floor(tile_y)))
+
+func _resolve_placement_tile(raw_tile: Vector2i) -> Vector2i:
+	if current_item.is_empty():
+		return raw_tile
+
+	if str(current_item["kind"]) == "bar":
+		return _resolve_bar_snap_tile(raw_tile, moving_object_index)
+
+	return raw_tile
+
+func _resolve_bar_snap_tile(raw_tile: Vector2i, skip_index: int = -1) -> Vector2i:
+	var bar_tiles: Array[Vector2i] = []
+
+	for i in range(placed_objects.size()):
+		if i == skip_index:
+			continue
+
+		var obj: Dictionary = placed_objects[i]
+		if str(obj["kind"]) != "bar" or str(obj["id"]) != "bar_segment":
+			continue
+
+		bar_tiles.append(Vector2i(int(obj["x"]), int(obj["y"])))
+
+	# The very first module is placed manually against either valid wall.
+	if bar_tiles.is_empty():
+		return raw_tile
+
+	var candidates: Array[Vector2i] = []
+
+	for bar_tile in bar_tiles:
+		var neighbors: Array[Vector2i] = []
+		if bar_tile.y == 0:
+			neighbors = [
+				Vector2i(bar_tile.x - 1, 0),
+				Vector2i(bar_tile.x + 1, 0)
+			]
+		elif bar_tile.x == 0:
+			neighbors = [
+				Vector2i(0, bar_tile.y - 1),
+				Vector2i(0, bar_tile.y + 1)
+			]
+
+		for candidate in neighbors:
+			if not _is_bar_wall_tile(candidate):
+				continue
+			if _bar_tile_is_occupied(candidate, skip_index):
+				continue
+			if not candidates.has(candidate):
+				candidates.append(candidate)
+
+	if candidates.is_empty():
+		return raw_tile
+
+	var best_tile: Vector2i = candidates[0]
+	var best_distance: float = Vector2(raw_tile.x, raw_tile.y).distance_to(Vector2(best_tile.x, best_tile.y))
+
+	for candidate in candidates:
+		var candidate_distance: float = Vector2(raw_tile.x, raw_tile.y).distance_to(Vector2(candidate.x, candidate.y))
+		if candidate_distance < best_distance:
+			best_distance = candidate_distance
+			best_tile = candidate
+
+	return best_tile
+
+func _bar_tile_is_occupied(tile: Vector2i, skip_index: int = -1) -> bool:
+	for i in range(placed_objects.size()):
+		if i == skip_index:
+			continue
+
+		var obj: Dictionary = placed_objects[i]
+		if int(obj["x"]) == tile.x and int(obj["y"]) == tile.y:
+			return true
+
+	return false
 
 func _can_place_current(tile: Vector2i) -> bool:
 	if current_item.is_empty():
@@ -703,7 +777,10 @@ func _place_current_item(tile: Vector2i) -> void:
 	current_item = {}
 	hover_tile = Vector2i(-1, -1)
 	_refresh_selection_panel()
-	design_hint.text = str(placed["name"]) + " placed • edit it above or choose another item"
+	if str(placed["kind"]) == "bar":
+		design_hint.text = "Bar segment placed • choose Bar Segment again to extend this straight run"
+	else:
+		design_hint.text = str(placed["name"]) + " placed • edit it above or choose another item"
 	_save_layout()
 	_refresh_npc_targets_after_layout_change()
 	queue_redraw()
@@ -721,7 +798,19 @@ func _draw_build_item(obj: Dictionary) -> void:
 	var color: Color = obj["color"]
 
 	if kind == "bar":
-		_draw_modular_bar_segment(obj)
+		if str(obj["id"]) == "bar_segment":
+			_draw_modular_bar_segment(obj)
+		else:
+			_draw_iso_box(
+				x,
+				y,
+				width,
+				depth,
+				38.0,
+				color.lightened(0.08),
+				color.darkened(0.34),
+				color.darkened(0.18)
+			)
 	elif kind == "seat":
 		_draw_iso_box(x, y, width, depth, 20.0, color.lightened(0.10), color.darkened(0.30), color.darkened(0.15))
 		_draw_iso_box(x + 0.08, y, width - 0.16, 0.28, 34.0, color.lightened(0.04), color.darkened(0.34), color.darkened(0.20))
@@ -747,12 +836,43 @@ func _draw_build_item(obj: Dictionary) -> void:
 		var glow_pos: Vector2 = _iso(x + 0.5, y + 0.5) - Vector2(0, 62)
 		draw_circle(glow_pos, 8.0, color)
 
+func _bar_segment_state(obj: Dictionary) -> String:
+	var tile: Vector2i = Vector2i(int(obj["x"]), int(obj["y"]))
+	var previous_tile: Vector2i = tile
+	var next_tile: Vector2i = tile
+
+	if tile.y == 0:
+		previous_tile = Vector2i(tile.x - 1, 0)
+		next_tile = Vector2i(tile.x + 1, 0)
+	elif tile.x == 0:
+		previous_tile = Vector2i(0, tile.y - 1)
+		next_tile = Vector2i(0, tile.y + 1)
+
+	var has_previous: bool = _has_modular_bar_at(previous_tile)
+	var has_next: bool = _has_modular_bar_at(next_tile)
+
+	if not has_previous and not has_next:
+		return "solo"
+	if not has_previous and has_next:
+		return "left_end"
+	if has_previous and has_next:
+		return "middle"
+	return "right_end"
+
+func _has_modular_bar_at(tile: Vector2i) -> bool:
+	for obj in placed_objects:
+		if str(obj["kind"]) != "bar" or str(obj["id"]) != "bar_segment":
+			continue
+		if int(obj["x"]) == tile.x and int(obj["y"]) == tile.y:
+			return true
+	return false
+
 func _draw_modular_bar_segment(obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
 	var y: float = float(obj["y"])
 	var color: Color = obj["color"]
+	var state: String = _bar_segment_state(obj)
 
-	# Every purchase draws this exact same 1x1 counter module.
 	_draw_iso_box(
 		x,
 		y,
@@ -764,19 +884,38 @@ func _draw_modular_bar_segment(obj: Dictionary) -> void:
 		color.darkened(0.18)
 	)
 
-	# The neon face runs edge-to-edge so repeated copies meet seamlessly.
 	if int(obj["y"]) == 0:
-		var top_front_a: Vector2 = _iso(x, y + 1.0) - Vector2(0, 22)
-		var top_front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
-		draw_line(top_front_a, top_front_b, Color("#2de3ff"), 2.8)
-		_draw_bar_back_shelf_top(x, color)
+		var front_a: Vector2 = _iso(x, y + 1.0) - Vector2(0, 22)
+		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
+		draw_line(front_a, front_b, Color("#2de3ff"), 2.8)
+		_draw_bar_counter_end_caps_top(x, y, state)
+		_draw_bar_back_shelf_top(x, color, state)
 	elif int(obj["x"]) == 0:
-		var left_front_a: Vector2 = _iso(x + 1.0, y) - Vector2(0, 22)
-		var left_front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
-		draw_line(left_front_a, left_front_b, Color("#2de3ff"), 2.8)
-		_draw_bar_back_shelf_left(y, color)
+		var front_a: Vector2 = _iso(x + 1.0, y) - Vector2(0, 22)
+		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
+		draw_line(front_a, front_b, Color("#2de3ff"), 2.8)
+		_draw_bar_counter_end_caps_left(x, y, state)
+		_draw_bar_back_shelf_left(y, color, state)
 
-func _draw_bar_back_shelf_top(x: float, color: Color) -> void:
+func _draw_bar_counter_end_caps_top(x: float, y: float, state: String) -> void:
+	var left_point: Vector2 = _iso(x, y + 1.0)
+	var right_point: Vector2 = _iso(x + 1.0, y + 1.0)
+
+	if state == "solo" or state == "left_end":
+		draw_line(left_point - Vector2(0, 5), left_point - Vector2(0, 33), Color("#c64cff"), 3.0)
+	if state == "solo" or state == "right_end":
+		draw_line(right_point - Vector2(0, 5), right_point - Vector2(0, 33), Color("#c64cff"), 3.0)
+
+func _draw_bar_counter_end_caps_left(x: float, y: float, state: String) -> void:
+	var first_point: Vector2 = _iso(x + 1.0, y)
+	var second_point: Vector2 = _iso(x + 1.0, y + 1.0)
+
+	if state == "solo" or state == "left_end":
+		draw_line(first_point - Vector2(0, 5), first_point - Vector2(0, 33), Color("#c64cff"), 3.0)
+	if state == "solo" or state == "right_end":
+		draw_line(second_point - Vector2(0, 5), second_point - Vector2(0, 33), Color("#c64cff"), 3.0)
+
+func _draw_bar_back_shelf_top(x: float, color: Color, state: String) -> void:
 	var a: Vector2 = _iso(x, 0.0)
 	var b: Vector2 = _iso(x + 1.0, 0.0)
 	var shelf_h: float = 66.0
@@ -789,12 +928,18 @@ func _draw_bar_back_shelf_top(x: float, color: Color) -> void:
 	draw_polygon(panel, PackedColorArray([color.darkened(0.48)]))
 	draw_line(a - Vector2(0, 28), b - Vector2(0, 28), Color("#b54cff"), 2.0)
 	draw_line(a - Vector2(0, 52), b - Vector2(0, 52), Color("#2de3ff"), 1.5)
+
+	if state == "solo" or state == "left_end":
+		draw_line(a - Vector2(0, 6), a - Vector2(0, shelf_h), Color("#c64cff"), 2.5)
+	if state == "solo" or state == "right_end":
+		draw_line(b - Vector2(0, 6), b - Vector2(0, shelf_h), Color("#c64cff"), 2.5)
+
 	var bottle_center: Vector2 = (a + b) * 0.5 - Vector2(0, 43)
 	draw_circle(bottle_center - Vector2(8, 0), 3.0, Color("#ff8d45"))
 	draw_circle(bottle_center, 3.0, Color("#cf55ff"))
 	draw_circle(bottle_center + Vector2(8, 0), 3.0, Color("#55d9ff"))
 
-func _draw_bar_back_shelf_left(y: float, color: Color) -> void:
+func _draw_bar_back_shelf_left(y: float, color: Color, state: String) -> void:
 	var a: Vector2 = _iso(0.0, y)
 	var b: Vector2 = _iso(0.0, y + 1.0)
 	var shelf_h: float = 66.0
@@ -807,6 +952,12 @@ func _draw_bar_back_shelf_left(y: float, color: Color) -> void:
 	draw_polygon(panel, PackedColorArray([color.darkened(0.48)]))
 	draw_line(a - Vector2(0, 28), b - Vector2(0, 28), Color("#b54cff"), 2.0)
 	draw_line(a - Vector2(0, 52), b - Vector2(0, 52), Color("#2de3ff"), 1.5)
+
+	if state == "solo" or state == "left_end":
+		draw_line(a - Vector2(0, 6), a - Vector2(0, shelf_h), Color("#c64cff"), 2.5)
+	if state == "solo" or state == "right_end":
+		draw_line(b - Vector2(0, 6), b - Vector2(0, shelf_h), Color("#c64cff"), 2.5)
+
 	var bottle_center: Vector2 = (a + b) * 0.5 - Vector2(0, 43)
 	draw_circle(bottle_center - Vector2(6, 2), 3.0, Color("#ff8d45"))
 	draw_circle(bottle_center, 3.0, Color("#cf55ff"))
