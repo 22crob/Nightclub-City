@@ -6,16 +6,10 @@
 script = ExtResource("1_bar")
 
 [node name="PlacementAnchor" type="Marker2D" parent="."]
-position = Vector2(18, 45)
+position = Vector2(0, 0)
 
 [node name="BartenderPoint" type="Marker2D" parent="."]
-position = Vector2(38.88, 34.56)
+position = Vector2(2, 16)
 
-[node name="CustomerPoint1" type="Marker2D" parent="."]
-position = Vector2(-34.2, 35.1)
-
-[node name="CustomerPoint2" type="Marker2D" parent="."]
-position = Vector2(1.8, 53.1)
-
-[node name="CustomerPoint3" type="Marker2D" parent="."]
-position = Vector2(37.8, 71.1)
+[node name="CustomerPoint" type="Marker2D" parent="."]
+position = Vector2(-25, 32)
