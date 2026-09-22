@@ -61,9 +61,7 @@ var level_up_timer: float = 0.0
 
 var item_catalog: Dictionary = {
 	"Bars": [
-		{"id": "starter_bar", "name": "Starter Bar", "w": 1, "d": 3, "kind": "bar", "unlock_level": 1, "color": Color("#2f6582")},
-		{"id": "compact_bar", "name": "Compact Bar", "w": 2, "d": 2, "kind": "bar", "unlock_level": 2, "color": Color("#5b337b")},
-		{"id": "neon_bar", "name": "Neon Bar", "w": 1, "d": 4, "kind": "bar", "unlock_level": 3, "color": Color("#315f78")}
+		{"id": "bar_segment", "name": "Bar Segment", "w": 1, "d": 1, "kind": "bar", "unlock_level": 1, "color": Color("#315f78")}
 	],
 	"Seating": [
 		{"id": "booth", "name": "Lounge Booth", "w": 2, "d": 1, "kind": "seat", "unlock_level": 1, "color": Color("#5b2d70")},
@@ -99,7 +97,7 @@ var npc_colors: Array[Color] = [
 ]
 
 func _ready() -> void:
-	print("Nightclub City Build Menu Polish v2 loaded.")
+	print("Nightclub City Modular Bar v1 loaded.")
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -554,12 +552,76 @@ func _world_to_tile(world_pos: Vector2) -> Vector2i:
 func _can_place_current(tile: Vector2i) -> bool:
 	if current_item.is_empty():
 		return false
+
+	if str(current_item["kind"]) == "bar":
+		return _can_place_bar_segment(tile, moving_object_index)
+
 	return _can_place_dimensions(
 		tile,
 		int(current_item["w"]),
 		int(current_item["d"]),
 		moving_object_index
 	)
+
+func _can_place_bar_segment(tile: Vector2i, skip_index: int = -1) -> bool:
+	if not _is_bar_wall_tile(tile):
+		return false
+
+	if _is_static_nav_blocked(tile):
+		return false
+
+	if not _can_place_dimensions(tile, 1, 1, skip_index):
+		return false
+
+	var modular_bar_count: int = 0
+	var touches_existing_run: bool = false
+
+	for i in range(placed_objects.size()):
+		if i == skip_index:
+			continue
+
+		var obj: Dictionary = placed_objects[i]
+		if str(obj["kind"]) != "bar":
+			continue
+		if str(obj["id"]) != "bar_segment":
+			continue
+
+		modular_bar_count += 1
+		var other_tile: Vector2i = Vector2i(int(obj["x"]), int(obj["y"]))
+		if _bar_tiles_connect(tile, other_tile):
+			touches_existing_run = true
+
+	if modular_bar_count == 0:
+		return true
+
+	return touches_existing_run
+
+func _is_bar_wall_tile(tile: Vector2i) -> bool:
+	if tile.x < 0 or tile.y < 0 or tile.x >= CLUB_W or tile.y >= CLUB_H:
+		return false
+
+	# Do not use the top-left corner because it would visually create a turn.
+	if tile == Vector2i(0, 0):
+		return false
+
+	# Top wall. Leave the entrance opening clear.
+	if tile.y == 0:
+		return tile.x != 10 and tile.x != 11
+
+	# Left wall.
+	if tile.x == 0:
+		return true
+
+	return false
+
+func _bar_tiles_connect(a: Vector2i, b: Vector2i) -> bool:
+	if a.y == 0 and b.y == 0:
+		return abs(a.x - b.x) == 1
+
+	if a.x == 0 and b.x == 0:
+		return abs(a.y - b.y) == 1
+
+	return false
 
 func _can_place_dimensions(tile: Vector2i, width: int, depth: int, skip_index: int = -1) -> bool:
 	if tile.x < 0 or tile.y < 0:
@@ -625,10 +687,7 @@ func _draw_build_item(obj: Dictionary) -> void:
 	var color: Color = obj["color"]
 
 	if kind == "bar":
-		_draw_iso_box(x, y, width, depth, 34.0, color.lightened(0.08), color.darkened(0.34), color.darkened(0.18))
-		var a: Vector2 = _iso(x + 0.10, y + depth) - Vector2(0, 22)
-		var b: Vector2 = _iso(x + width - 0.10, y + depth) - Vector2(0, 22)
-		draw_line(a, b, Color("#2de3ff"), 2.5)
+		_draw_modular_bar_segment(obj)
 	elif kind == "seat":
 		_draw_iso_box(x, y, width, depth, 20.0, color.lightened(0.10), color.darkened(0.30), color.darkened(0.15))
 		_draw_iso_box(x + 0.08, y, width - 0.16, 0.28, 34.0, color.lightened(0.04), color.darkened(0.34), color.darkened(0.20))
@@ -653,6 +712,71 @@ func _draw_build_item(obj: Dictionary) -> void:
 		_draw_iso_box(x + 0.30, y + 0.30, 0.40, 0.40, 58.0, color.lightened(0.18), color.darkened(0.42), color.darkened(0.26))
 		var glow_pos: Vector2 = _iso(x + 0.5, y + 0.5) - Vector2(0, 62)
 		draw_circle(glow_pos, 8.0, color)
+
+func _draw_modular_bar_segment(obj: Dictionary) -> void:
+	var x: float = float(obj["x"])
+	var y: float = float(obj["y"])
+	var color: Color = obj["color"]
+
+	# Every purchase draws this exact same 1x1 counter module.
+	_draw_iso_box(
+		x,
+		y,
+		1.0,
+		1.0,
+		34.0,
+		color.lightened(0.08),
+		color.darkened(0.34),
+		color.darkened(0.18)
+	)
+
+	# The neon face runs edge-to-edge so repeated copies meet seamlessly.
+	if int(obj["y"]) == 0:
+		var front_a: Vector2 = _iso(x, y + 1.0) - Vector2(0, 22)
+		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
+		draw_line(front_a, front_b, Color("#2de3ff"), 2.8)
+		_draw_bar_back_shelf_top(x, color)
+	elif int(obj["x"]) == 0:
+		var front_a: Vector2 = _iso(x + 1.0, y) - Vector2(0, 22)
+		var front_b: Vector2 = _iso(x + 1.0, y + 1.0) - Vector2(0, 22)
+		draw_line(front_a, front_b, Color("#2de3ff"), 2.8)
+		_draw_bar_back_shelf_left(y, color)
+
+func _draw_bar_back_shelf_top(x: float, color: Color) -> void:
+	var a: Vector2 = _iso(x, 0.0)
+	var b: Vector2 = _iso(x + 1.0, 0.0)
+	var shelf_h: float = 66.0
+	var panel: PackedVector2Array = PackedVector2Array([
+		a - Vector2(0, 6),
+		b - Vector2(0, 6),
+		b - Vector2(0, shelf_h),
+		a - Vector2(0, shelf_h)
+	])
+	draw_polygon(panel, PackedColorArray([color.darkened(0.48)]))
+	draw_line(a - Vector2(0, 28), b - Vector2(0, 28), Color("#b54cff"), 2.0)
+	draw_line(a - Vector2(0, 52), b - Vector2(0, 52), Color("#2de3ff"), 1.5)
+	var bottle_center: Vector2 = (a + b) * 0.5 - Vector2(0, 43)
+	draw_circle(bottle_center - Vector2(8, 0), 3.0, Color("#ff8d45"))
+	draw_circle(bottle_center, 3.0, Color("#cf55ff"))
+	draw_circle(bottle_center + Vector2(8, 0), 3.0, Color("#55d9ff"))
+
+func _draw_bar_back_shelf_left(y: float, color: Color) -> void:
+	var a: Vector2 = _iso(0.0, y)
+	var b: Vector2 = _iso(0.0, y + 1.0)
+	var shelf_h: float = 66.0
+	var panel: PackedVector2Array = PackedVector2Array([
+		a - Vector2(0, 6),
+		b - Vector2(0, 6),
+		b - Vector2(0, shelf_h),
+		a - Vector2(0, shelf_h)
+	])
+	draw_polygon(panel, PackedColorArray([color.darkened(0.48)]))
+	draw_line(a - Vector2(0, 28), b - Vector2(0, 28), Color("#b54cff"), 2.0)
+	draw_line(a - Vector2(0, 52), b - Vector2(0, 52), Color("#2de3ff"), 1.5)
+	var bottle_center: Vector2 = (a + b) * 0.5 - Vector2(0, 43)
+	draw_circle(bottle_center - Vector2(6, 2), 3.0, Color("#ff8d45"))
+	draw_circle(bottle_center, 3.0, Color("#cf55ff"))
+	draw_circle(bottle_center + Vector2(6, 2), 3.0, Color("#55d9ff"))
 
 func _draw_placement_preview() -> void:
 	if current_item.is_empty() or hover_tile.x < 0 or hover_tile.y < 0:
@@ -707,6 +831,7 @@ func _refresh_selection_panel() -> void:
 	selection_panel.visible = true
 	var obj: Dictionary = placed_objects[selected_object_index]
 	selected_name.text = str(obj["name"])
+	rotate_button.disabled = str(obj["kind"]) == "bar"
 
 func _move_selected_object() -> void:
 	if selected_object_index < 0 or selected_object_index >= placed_objects.size():
@@ -722,6 +847,11 @@ func _rotate_selected_object() -> void:
 		return
 
 	var obj: Dictionary = placed_objects[selected_object_index]
+	if str(obj["kind"]) == "bar":
+		if design_drawer.visible:
+			design_hint.text = "Bar segments are fixed 1x1 modules"
+		return
+
 	var old_w: int = int(obj["w"])
 	var old_d: int = int(obj["d"])
 	var tile: Vector2i = Vector2i(int(obj["x"]), int(obj["y"]))
@@ -945,23 +1075,15 @@ func _append_dance_spots(targets: Array[Vector2], obj: Dictionary) -> void:
 func _append_bar_spots(targets: Array[Vector2], obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
 	var y: float = float(obj["y"])
-	var width: int = int(obj["w"])
-	var depth: int = int(obj["d"])
 
-	if depth >= width:
-		var side_x: float = x + float(width) + 0.45
-		if side_x >= float(CLUB_W) - 0.15:
-			side_x = x - 0.45
-		for i in range(depth):
-			var spot: Vector2 = Vector2(side_x, y + float(i) + 0.5)
-			targets.append(_clamp_activity_spot(spot))
+	# One repeated module = one customer service position.
+	if int(obj["y"]) == 0:
+		targets.append(_clamp_activity_spot(Vector2(x + 0.5, y + 1.45)))
+	elif int(obj["x"]) == 0:
+		targets.append(_clamp_activity_spot(Vector2(x + 1.45, y + 0.5)))
 	else:
-		var side_y: float = y + float(depth) + 0.45
-		if side_y >= float(CLUB_H) - 0.15:
-			side_y = y - 0.45
-		for i in range(width):
-			var spot: Vector2 = Vector2(x + float(i) + 0.5, side_y)
-			targets.append(_clamp_activity_spot(spot))
+		# Legacy/test bars that are not wall modules keep a safe fallback spot.
+		targets.append(_clamp_activity_spot(Vector2(x + 1.45, y + 0.5)))
 
 func _append_seat_spots(targets: Array[Vector2], obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
@@ -1361,9 +1483,9 @@ func _show_level_up(new_level: int) -> void:
 
 func _unlock_summary_for_level(level: int) -> String:
 	if level == 2:
-		return "Unlocked: Compact Bar • Club Sofa • 2x2 Dance Floor • Neon Divider • Neon Pillar"
+		return "Unlocked: Club Sofa • 2x2 Dance Floor • Neon Divider • Neon Pillar"
 	if level == 3:
-		return "Unlocked: Neon Bar • Accent Chair • Purple Divider • Purple Pillar"
+		return "Unlocked: Accent Chair • Purple Divider • Purple Pillar"
 	return "New club items unlocked"
 
 func _save_economy() -> void:
