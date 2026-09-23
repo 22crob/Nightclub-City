@@ -25,7 +25,7 @@ offset_right = 860.0
 offset_bottom = 82.0
 theme_override_colors/font_color = Color(0.65, 0.73, 0.9, 1)
 theme_override_font_sizes/font_size = 13
-text = "72x36 production grid • 1x3 footprint per module • rear shelf / service aisle / front counter"
+text = "48x24 production grid • 1x3 footprint per module • rear shelf / service aisle / front counter"
 
 [node name="Status" type="Label" parent="HUD"]
 offset_left = 22.0

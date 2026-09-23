@@ -1,15 +1,15 @@
 extends Node2D
 
-const TILE_W: float = 72.0
-const TILE_H: float = 36.0
+const TILE_W: float = 48.0
+const TILE_H: float = 24.0
 const GRID_W: int = 12
 const GRID_H: int = 10
 const WALL_H: float = 108.0
 const ORIGIN: Vector2 = Vector2(500.0, 185.0)
 const TEST_MODULE_COUNT: int = 6
 
-const WALL_STEP: Vector2 = Vector2(36.0, 18.0)
-const BAR_DEPTH_STEP: Vector2 = Vector2(-27.0, 13.5)
+const WALL_STEP: Vector2 = Vector2(24.0, 12.0)
+const BAR_DEPTH_STEP: Vector2 = Vector2(-16.0, 8.0)
 
 @export var bar_scene: PackedScene
 
@@ -83,14 +83,14 @@ func _update_snap_status() -> void:
 
 	var status: Label = $HUD/Status
 	if problems.is_empty():
-		status.text = "YELLOW  Snap Anchor      GREEN  Bartender Slot      PINK  Customer Point\nSNAP PASS = wall step (36,18) px • depth slot (-27,13.5) px • 3 depth slots = 2 floor tiles"
+		status.text = "YELLOW  Snap Anchor      GREEN  Bartender Slot      PINK  Customer Point\nSNAP PASS = wall step (24,12) px • depth slot (-16,8) px • 3 depth slots = 2 floor tiles"
 	else:
 		status.text = "SNAP FAIL: " + str(problems)
 
 func _draw() -> void:
 	draw_rect(Rect2(0.0, 0.0, 1280.0, 720.0), Color("#08060f"))
 
-	# Keep the room floor on the normal 72x36 production grid.
+	# Keep the room floor on the normal 48x24 production grid.
 	for y in range(GRID_H):
 		for x in range(GRID_W):
 			var tile: PackedVector2Array = _tile_points(float(x), float(y), 1.0, 1.0)
