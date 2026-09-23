@@ -4,6 +4,8 @@ extends FurnitureBase
 const BAR_TEXTURE: Texture2D = preload("res://assets/furniture/bar_module_01.png")
 const BAR_FOOTPRINT := Vector2i(1, 3)
 const COUNTER_ROW := 2
+const SHELF_VISUAL_DROP_Y := 10.0
+const COUNTER_VISUAL_DROP_Y := 10.0
 
 @onready var shelf_sprite: Sprite2D = $ShelfSprite
 @onready var counter_sprite: Sprite2D = $CounterSprite
@@ -31,13 +33,13 @@ func _refresh_visual_positions() -> void:
 		return
 
 	# Shelf belongs to the back-wall seam of row 0.
-	shelf_ground_anchor.position = _back_wall_contact(anchor_cell)
+	shelf_ground_anchor.position = _back_wall_contact(anchor_cell) + Vector2(0.0, SHELF_VISUAL_DROP_Y)
 
 	# Bartender occupies the middle logical row.
 	bartender_row_marker.position = _cell_center(anchor_cell + Vector2i(0, 1))
 
 	# Counter is grounded on the customer-facing vertex of row 2.
-	counter_ground_anchor.position = _floor_front_contact(anchor_cell + Vector2i(0, COUNTER_ROW))
+	counter_ground_anchor.position = _floor_front_contact(anchor_cell + Vector2i(0, COUNTER_ROW)) + Vector2(0.0, COUNTER_VISUAL_DROP_Y)
 
 	if shelf_sprite.texture != null:
 		shelf_sprite.position = shelf_ground_anchor.position - _cached_shelf_contact_local
@@ -70,9 +72,6 @@ func _draw() -> void:
 	_draw_contact_shadow(shelf_ground_anchor.position + Vector2(1, 1), 18.0)
 	_draw_contact_shadow(counter_ground_anchor.position - Vector2(0, 2), 27.0)
 
-	# Tiny calibration dots make the two real anchors visible in the lab.
-	draw_circle(shelf_ground_anchor.position, 2.5, Color(0.25, 0.90, 1.0, 0.95))
-	draw_circle(counter_ground_anchor.position, 2.5, Color(1.0, 0.55, 0.25, 0.95))
 
 func _draw_contact_shadow(contact: Vector2, radius: float) -> void:
 	draw_set_transform(contact, 0.0, Vector2(1.0, 0.34))
