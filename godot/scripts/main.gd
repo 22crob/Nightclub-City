@@ -119,7 +119,6 @@ var npc_colors: Array[Color] = [
 func _ready() -> void:
 	print("Nightclub City Clean Bar Asset Pipeline v1 loaded.")
 	_load_bar_sprite_assets()
-	_prepare_blender_bar_parts()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
