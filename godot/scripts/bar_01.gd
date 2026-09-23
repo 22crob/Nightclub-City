@@ -7,9 +7,9 @@ const TILE_H: float = 36.0
 const FOOTPRINT_W: int = 1
 const FOOTPRINT_D: int = 3
 
-# The Blender render is calibrated so its two floor-contact points land on the
-# bottom vertices of rear tile 1 and front tile 3.
-const ART_OFFSET: Vector2 = Vector2(-115.0, -46.0)
+# The Blender render is shifted toward the back wall as one rigid visual.
+# Internal shelf / aisle / counter spacing is unchanged.
+const ART_OFFSET: Vector2 = Vector2(-97.0, -55.0)
 
 @export var show_debug_markers: bool = true
 @export var show_debug_tiles: bool = true
