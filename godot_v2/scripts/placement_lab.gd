@@ -8,6 +8,7 @@ const BAR_SCENE: PackedScene = preload("res://scenes/furniture/Bar01.tscn")
 const OCCUPANCY_GRID = preload("res://scripts/occupancy_grid.gd")
 
 @onready var floor: TileMapLayer = $World/Floor
+@onready var back_wall = $World/BackWall
 @onready var furniture_layer: Node2D = $World/FurnitureLayer
 @onready var preview = $World/FootprintPreview
 @onready var status_label: Label = $UI/Panel/Status
@@ -24,6 +25,7 @@ var moving_original_footprint := Vector2i.ONE
 func _ready() -> void:
 	_build_native_tileset()
 	_fill_floor()
+	back_wall.setup(floor, ROOM_SIZE.x)
 	preview.setup(floor)
 	_update_hover()
 	_update_status()
@@ -90,15 +92,26 @@ func _update_hover() -> void:
 		footprint = moving_owner.get_footprint()
 		ignore_owner = moving_owner
 
-	var valid := occupancy.can_place(hover_cell, footprint, ROOM_SIZE, ignore_owner)
+	var valid := _placement_is_valid(hover_cell, footprint, ignore_owner)
 	preview.show_preview(hover_cell, footprint, valid)
+
+func _placement_is_valid(cell: Vector2i, footprint: Vector2i, ignore_owner: Object = null) -> bool:
+	if not occupancy.can_place(cell, footprint, ROOM_SIZE, ignore_owner):
+		return false
+
+	# The real bar includes a rear shelf, so its anchor belongs on the y=0
+	# back-wall row. Test furniture remains free-placement.
+	if footprint == Vector2i(1, 3) and cell.y != 0:
+		return false
+
+	return true
 
 func _place_or_finish_move() -> void:
 	var footprint := selected_footprint
 
 	if moving_owner != null:
 		footprint = moving_owner.get_footprint()
-		if not occupancy.can_place(hover_cell, footprint, ROOM_SIZE, moving_owner):
+		if not _placement_is_valid(hover_cell, footprint, moving_owner):
 			return
 
 		moving_owner.visible = true
@@ -108,7 +121,7 @@ func _place_or_finish_move() -> void:
 		_update_status()
 		return
 
-	if not occupancy.can_place(hover_cell, footprint, ROOM_SIZE):
+	if not _placement_is_valid(hover_cell, footprint):
 		return
 
 	var scene_to_place: PackedScene = DEBUG_FURNITURE
