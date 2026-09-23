@@ -1,7 +1,7 @@
 extends Node2D
 
-const TILE_W: float = 72.0
-const TILE_H: float = 36.0
+const TILE_W: float = 48.0
+const TILE_H: float = 24.0
 const CLUB_W: int = 14
 const CLUB_H: int = 11
 const WALL_H: float = 108.0
