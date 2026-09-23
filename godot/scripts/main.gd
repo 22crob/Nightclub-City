@@ -7,6 +7,8 @@ const CLUB_H: int = 11
 const WALL_H: float = 108.0
 const BLENDER_BAR_TEXTURE: Texture2D = preload("res://assets/bar/bar_module_01.png")
 const BLENDER_BAR_ART_OFFSET: Vector2 = Vector2(-90.0, -58.0)
+const BAR_COUNTER_TOWARD_WALL_SHIFT: Vector2 = Vector2(24.0, -12.0)
+const BAR_LOGICAL_DEPTH: int = 3
 
 @onready var camera: Camera2D = $Camera2D
 @onready var zoom_out_button: Button = $HUD/ZoomControls/ZoomOut
@@ -67,12 +69,14 @@ var bar_single_texture: Texture2D
 var bar_left_end_texture: Texture2D
 var bar_middle_texture: Texture2D
 var bar_right_end_texture: Texture2D
+var blender_bar_shelf_texture: Texture2D
+var blender_bar_counter_texture: Texture2D
 const SINGLE_BAR_CALIBRATION: bool = false
 const BAR_TOP_WALL_ONLY: bool = true
 
 var item_catalog: Dictionary = {
 	"Bars": [
-		{"id": "bar_segment", "name": "Bar Segment", "w": 1, "d": 1, "kind": "bar", "unlock_level": 1, "color": Color("#315f78")}
+		{"id": "bar_segment", "name": "Bar Segment", "w": 1, "d": BAR_LOGICAL_DEPTH, "kind": "bar", "unlock_level": 1, "color": Color("#315f78")}
 	],
 	"Seating": [
 		{"id": "booth", "name": "Lounge Booth", "w": 2, "d": 1, "kind": "seat", "unlock_level": 1, "color": Color("#5b2d70")},
@@ -110,6 +114,7 @@ var npc_colors: Array[Color] = [
 func _ready() -> void:
 	print("Nightclub City Clean Bar Asset Pipeline v1 loaded.")
 	_load_bar_sprite_assets()
+	_prepare_blender_bar_parts()
 	zoom_out_button.pressed.connect(_zoom_out)
 	zoom_in_button.pressed.connect(_zoom_in)
 	design_button.pressed.connect(_toggle_design_drawer)
@@ -136,9 +141,9 @@ func _ready() -> void:
 	queue_redraw()
 
 func _load_bar_sprite_assets() -> void:
-	# Production rule: a bar tile owns exactly one grid cell. We intentionally
+	# Production rule: a bar module owns one wall cell and three depth cells. We intentionally
 	# do NOT load the legacy 144px left/middle/right run sprites here because
-	# neighboring isometric cells advance only 36px horizontally, which caused
+	# neighboring 48x24 wall cells advance 24px horizontally, which caused
 	# those opaque sprites to paint over one another.
 	#
 	# The clean pipeline uses two authored textures whose calibration edges are
@@ -153,6 +158,110 @@ func _load_bar_sprite_assets() -> void:
 	bar_left_end_texture = null
 	bar_middle_texture = null
 	bar_right_end_texture = null
+
+func _prepare_blender_bar_parts() -> void:
+	var source: Image = BLENDER_BAR_TEXTURE.get_image()
+	if source == null:
+		return
+
+	var width: int = source.get_width()
+	var height: int = source.get_height()
+	if width <= 0 or height <= 0:
+		return
+
+	var visited: PackedByteArray = PackedByteArray()
+	visited.resize(width * height)
+	var components: Array = []
+	var directions: Array[Vector2i] = [
+		Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
+		Vector2i(-1, 0),                       Vector2i(1, 0),
+		Vector2i(-1, 1),  Vector2i(0, 1),  Vector2i(1, 1)
+	]
+
+	for py in range(height):
+		for px in range(width):
+			var start_index: int = py * width + px
+			if visited[start_index] != 0:
+				continue
+			visited[start_index] = 1
+			if source.get_pixel(px, py).a <= 0.02:
+				continue
+
+			var queue: Array[Vector2i] = [Vector2i(px, py)]
+			var queue_index: int = 0
+			var pixels: Array[Vector2i] = []
+			var sum: Vector2 = Vector2.ZERO
+
+			while queue_index < queue.size():
+				var point: Vector2i = queue[queue_index]
+				queue_index += 1
+				pixels.append(point)
+				sum += Vector2(point.x, point.y)
+
+				for direction in directions:
+					var neighbor: Vector2i = point + direction
+					if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= width or neighbor.y >= height:
+						continue
+					var neighbor_index: int = neighbor.y * width + neighbor.x
+					if visited[neighbor_index] != 0:
+						continue
+					visited[neighbor_index] = 1
+					if source.get_pixel(neighbor.x, neighbor.y).a > 0.02:
+						queue.append(neighbor)
+
+			components.append({
+				"pixels": pixels,
+				"center": sum / float(pixels.size()),
+				"size": pixels.size()
+			})
+
+	if components.size() < 2:
+		blender_bar_shelf_texture = BLENDER_BAR_TEXTURE
+		blender_bar_counter_texture = null
+		return
+
+	var largest_index: int = -1
+	var second_index: int = -1
+	var largest_size: int = -1
+	var second_size: int = -1
+
+	for i in range(components.size()):
+		var component_size: int = int(components[i]["size"])
+		if component_size > largest_size:
+			second_index = largest_index
+			second_size = largest_size
+			largest_index = i
+			largest_size = component_size
+		elif component_size > second_size:
+			second_index = i
+			second_size = component_size
+
+	var center_a: Vector2 = components[largest_index]["center"]
+	var center_b: Vector2 = components[second_index]["center"]
+	var shelf_center: Vector2 = center_a
+	var counter_center: Vector2 = center_b
+
+	# In the Blender render the rear shelf is the upper-right cluster and the
+	# front counter is the lower-left cluster.
+	if (center_b.x - center_b.y) > (center_a.x - center_a.y):
+		shelf_center = center_b
+		counter_center = center_a
+
+	var shelf_image: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	var counter_image: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	shelf_image.fill(Color(0, 0, 0, 0))
+	counter_image.fill(Color(0, 0, 0, 0))
+
+	for component in components:
+		var component_center: Vector2 = component["center"]
+		var shelf_distance: float = component_center.distance_squared_to(shelf_center)
+		var counter_distance: float = component_center.distance_squared_to(counter_center)
+		var target: Image = shelf_image if shelf_distance <= counter_distance else counter_image
+		for point in component["pixels"]:
+			target.set_pixel(point.x, point.y, source.get_pixel(point.x, point.y))
+
+	blender_bar_shelf_texture = ImageTexture.create_from_image(shelf_image)
+	blender_bar_counter_texture = ImageTexture.create_from_image(counter_image)
 
 func _texture_from_base64_file(path: String) -> Texture2D:
 	if not FileAccess.file_exists(path):
@@ -761,7 +870,7 @@ func _can_place_bar_segment(tile: Vector2i, skip_index: int = -1) -> bool:
 	if not _bar_service_space_open(tile, skip_index):
 		return false
 
-	if not _can_place_dimensions(tile, 1, 1, skip_index):
+	if not _can_place_dimensions(tile, 1, BAR_LOGICAL_DEPTH, skip_index):
 		return false
 
 	var modular_bar_count: int = 0
@@ -1009,16 +1118,22 @@ func _draw_production_bar_module(obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
 	var y: float = float(obj["y"])
 
-	# Main-game bar rendering now uses the same calibrated Blender asset and
-	# local visual offset validated in the asset test room. The logical bar tile
-	# still owns the wall snap cell; only the artwork extends into the compact
-	# shelf / bartender / counter depth slots.
+	# Top-wall bars use two independently snapped visual layers from the same
+	# Blender render. The back shelf remains flush to the wall seam. The counter
+	# is moved exactly one 48x24 grid step toward the wall, tightening the
+	# bartender lane without scaling or distorting either piece.
 	if int(obj["y"]) == 0:
-		draw_texture(BLENDER_BAR_TEXTURE, _iso(x, y) + BLENDER_BAR_ART_OFFSET)
+		var art_origin: Vector2 = _iso(x, y) + BLENDER_BAR_ART_OFFSET
+		if blender_bar_shelf_texture != null:
+			draw_texture(blender_bar_shelf_texture, art_origin)
+		if blender_bar_counter_texture != null:
+			draw_texture(blender_bar_counter_texture, art_origin + BAR_COUNTER_TOWARD_WALL_SHIFT)
+		elif blender_bar_shelf_texture == null:
+			draw_texture(BLENDER_BAR_TEXTURE, art_origin)
 		return
 
-	# Keep the legacy fallback for future non-top-wall bars until those
-	# orientations get their own Blender render/calibration pass.
+	# Future left-wall bars keep the legacy fallback until a rotated Blender
+	# asset is calibrated for that wall.
 	_draw_modular_bar_shelf(obj)
 	_draw_modular_bar_segment(obj)
 
@@ -1401,12 +1516,17 @@ func _load_layout() -> void:
 			float(color_values[2]),
 			float(color_values[3])
 		)
+		var restored_kind: String = str(raw_obj.get("kind", "decor"))
+		var restored_id: String = str(raw_obj.get("id", "saved_item"))
+		var restored_depth: int = int(raw_obj.get("d", 1))
+		if restored_kind == "bar" and restored_id == "bar_segment":
+			restored_depth = BAR_LOGICAL_DEPTH
 		placed_objects.append({
-			"id": str(raw_obj.get("id", "saved_item")),
+			"id": restored_id,
 			"name": str(raw_obj.get("name", "Saved Item")),
-			"kind": str(raw_obj.get("kind", "decor")),
+			"kind": restored_kind,
 			"w": int(raw_obj.get("w", 1)),
-			"d": int(raw_obj.get("d", 1)),
+			"d": restored_depth,
 			"x": int(raw_obj.get("x", 0)),
 			"y": int(raw_obj.get("y", 0)),
 			"color": restored_color
@@ -1536,7 +1656,7 @@ func _append_bar_spots(targets: Array[Vector2], obj: Dictionary) -> void:
 	# One repeated module = one customer service position. The bartender lane is
 	# inside the module; customers still approach from the open front side.
 	if int(obj["y"]) == 0:
-		targets.append(_clamp_activity_spot(Vector2(x + 0.5, y + 1.45)))
+		targets.append(_clamp_activity_spot(Vector2(x + 0.5, y + 3.5)))
 	elif int(obj["x"]) == 0:
 		targets.append(_clamp_activity_spot(Vector2(x + 1.45, y + 0.5)))
 	else:
@@ -1548,7 +1668,7 @@ func _bar_bartender_position(obj: Dictionary) -> Vector2:
 	var y: float = float(obj["y"])
 
 	if int(obj["y"]) == 0:
-		return Vector2(x + 0.5, y + 0.37)
+		return Vector2(x + 0.5, y + 1.5)
 	if int(obj["x"]) == 0:
 		return Vector2(x + 0.37, y + 0.5)
 
