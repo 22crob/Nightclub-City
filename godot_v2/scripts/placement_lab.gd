@@ -4,6 +4,7 @@ const ROOM_SIZE := Vector2i(16, 12)
 const TILE_SIZE := Vector2i(48, 24)
 const FLOOR_TEXTURE: Texture2D = preload("res://assets/grid/floor_tile.svg")
 const DEBUG_FURNITURE: PackedScene = preload("res://scenes/furniture/DebugFurniture.tscn")
+const BAR_SCENE: PackedScene = preload("res://scenes/furniture/Bar01.tscn")
 const OCCUPANCY_GRID = preload("res://scripts/occupancy_grid.gd")
 
 @onready var floor: TileMapLayer = $World/Floor
@@ -110,10 +111,14 @@ func _place_or_finish_move() -> void:
 	if not occupancy.can_place(hover_cell, footprint, ROOM_SIZE):
 		return
 
-	var furniture := DEBUG_FURNITURE.instantiate() as FurnitureBase
+	var scene_to_place: PackedScene = DEBUG_FURNITURE
+	if footprint == Vector2i(1, 3):
+		scene_to_place = BAR_SCENE
+
+	var furniture := scene_to_place.instantiate() as FurnitureBase
 	furniture_layer.add_child(furniture)
 	furniture.configure_placement(hover_cell, footprint, floor)
-	occupancy.reserve(hover_cell, footprint, furniture, ROOM_SIZE)
+	occupancy.reserve(hover_cell, furniture.get_footprint(), furniture, ROOM_SIZE)
 	_update_status()
 
 func _begin_move_at_hover() -> void:
@@ -170,4 +175,4 @@ func _update_status() -> void:
 		occupancy.occupied_count()
 	]
 
-	controls_label.text = "1 = 1x1   2 = 2x2   3 = 1x3 BAR   |   Left click = place   M = move object under cursor   Right click = delete   Esc = cancel move"
+	controls_label.text = "1 = 1x1 TEST   2 = 2x2 TEST   3 = REAL BAR 1x3   |   Left click = place   M = move   Right click = delete   Esc = cancel"
