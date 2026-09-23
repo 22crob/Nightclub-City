@@ -24,8 +24,8 @@ func _refresh_visual_positions() -> void:
 	if grid_layer == null:
 		return
 
-	var shelf_contact := grid_layer.map_to_local(anchor_cell) - position
-	var counter_contact := grid_layer.map_to_local(anchor_cell + Vector2i(0, COUNTER_ROW)) - position
+	var shelf_contact := _ground_contact(anchor_cell)
+	var counter_contact := _ground_contact(anchor_cell + Vector2i(0, COUNTER_ROW))
 
 	if shelf_sprite.texture != null:
 		shelf_sprite.position = shelf_contact - Vector2(0.0, shelf_sprite.texture.get_height() * 0.5)
@@ -34,19 +34,26 @@ func _refresh_visual_positions() -> void:
 
 	queue_redraw()
 
+func _ground_contact(cell: Vector2i) -> Vector2:
+	var cell_center := grid_layer.map_to_local(cell) - position
+	var half_tile_height := float(grid_layer.tile_set.tile_size.y) * 0.5
+	# map_to_local() returns the center of an isometric diamond. Furniture art
+	# needs its base on the front/bottom vertex of that diamond, not its center.
+	return cell_center + Vector2(0.0, half_tile_height)
+
 func _draw() -> void:
 	if grid_layer == null:
 		return
 
-	var shelf_contact := grid_layer.map_to_local(anchor_cell) - position
-	var counter_contact := grid_layer.map_to_local(anchor_cell + Vector2i(0, COUNTER_ROW)) - position
+	var shelf_contact := _ground_contact(anchor_cell)
+	var counter_contact := _ground_contact(anchor_cell + Vector2i(0, COUNTER_ROW))
 
-	_draw_contact_shadow(shelf_contact + Vector2(0, 4), 20.0)
-	_draw_contact_shadow(counter_contact + Vector2(0, 5), 27.0)
+	_draw_contact_shadow(shelf_contact - Vector2(0, 2), 20.0)
+	_draw_contact_shadow(counter_contact - Vector2(0, 2), 27.0)
 
 func _draw_contact_shadow(contact: Vector2, radius: float) -> void:
 	draw_set_transform(contact, 0.0, Vector2(1.0, 0.34))
-	draw_circle(Vector2.ZERO, radius, Color(0.0, 0.0, 0.0, 0.30))
+	draw_circle(Vector2.ZERO, radius, Color(0.0, 0.0, 0.0, 0.42))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _prepare_visual_parts() -> void:
