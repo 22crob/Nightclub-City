@@ -25,6 +25,8 @@ const COUNTER_TOWARD_WALL_SHIFT: Vector2 = Vector2(24.0, -12.0)
 @onready var placement_anchor: Marker2D = $PlacementAnchor
 @onready var bartender_point: Marker2D = $BartenderPoint
 @onready var customer_point: Marker2D = $CustomerPoint
+@onready var shelf_sprite: Sprite2D = $ShelfSprite
+@onready var counter_sprite: Sprite2D = $CounterSprite
 
 var shelf_texture: Texture2D
 var counter_texture: Texture2D
@@ -34,6 +36,22 @@ func _ready() -> void:
 	placement_anchor.position = Vector2.ZERO
 	bartender_point.position = _bar_point(0.5, 1.5)
 	customer_point.position = _bar_point(0.5, 3.5)
+
+	shelf_sprite.texture = shelf_texture
+	shelf_sprite.position = ART_OFFSET
+	shelf_sprite.visible = shelf_texture != null
+
+	counter_sprite.texture = counter_texture
+	counter_sprite.position = ART_OFFSET + COUNTER_TOWARD_WALL_SHIFT
+	counter_sprite.visible = counter_texture != null
+
+	# Fallback: if the render could not be separated, show the source image as
+	# one real Sprite2D rather than painting it from _draw().
+	if shelf_texture == null and counter_texture == null:
+		shelf_sprite.texture = BAR_TEXTURE
+		shelf_sprite.position = ART_OFFSET
+		shelf_sprite.visible = true
+
 	queue_redraw()
 
 func _bar_point(wall_units: float, depth_slots: float) -> Vector2:
@@ -153,13 +171,6 @@ func _draw() -> void:
 		_draw_debug_tile(0, Color(0.20, 0.75, 1.0, 0.07), Color(0.25, 0.85, 1.0, 0.55))
 		_draw_debug_tile(1, Color(0.35, 0.95, 0.55, 0.07), Color(0.35, 0.95, 0.55, 0.55))
 		_draw_debug_tile(2, Color(1.0, 0.35, 0.65, 0.05), Color(1.0, 0.35, 0.65, 0.35))
-
-	if shelf_texture != null:
-		draw_texture(shelf_texture, ART_OFFSET)
-	if counter_texture != null:
-		draw_texture(counter_texture, ART_OFFSET + COUNTER_TOWARD_WALL_SHIFT)
-	elif shelf_texture == null:
-		draw_texture(BAR_TEXTURE, ART_OFFSET)
 
 	if show_debug_markers:
 		_draw_marker(placement_anchor.position, Color("#f6d365"), 4.0)
