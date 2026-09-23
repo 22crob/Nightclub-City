@@ -12,11 +12,11 @@ const WALL_STEP: Vector2 = Vector2(36.0, 18.0)
 
 # Three bar depth slots span the same distance as two full floor tiles.
 # This keeps the asset's real proportions while preserving shelf/aisle/counter logic.
-const DEPTH_STEP: Vector2 = Vector2(-24.0, 12.0)
+const DEPTH_STEP: Vector2 = Vector2(-27.0, 13.5)
 
 # Shift the whole Blender render toward the wall as one rigid visual.
 # Internal shelf / aisle / counter spacing is unchanged.
-const ART_OFFSET: Vector2 = Vector2(-73.0, -67.0)
+const ART_OFFSET: Vector2 = Vector2(-65.0, -71.0)
 
 @export var show_debug_markers: bool = true
 @export var show_debug_tiles: bool = true

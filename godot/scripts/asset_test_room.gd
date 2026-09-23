@@ -9,7 +9,7 @@ const ORIGIN: Vector2 = Vector2(500.0, 185.0)
 const TEST_MODULE_COUNT: int = 6
 
 const WALL_STEP: Vector2 = Vector2(36.0, 18.0)
-const BAR_DEPTH_STEP: Vector2 = Vector2(-24.0, 12.0)
+const BAR_DEPTH_STEP: Vector2 = Vector2(-27.0, 13.5)
 
 @export var bar_scene: PackedScene
 
@@ -83,7 +83,7 @@ func _update_snap_status() -> void:
 
 	var status: Label = $HUD/Status
 	if problems.is_empty():
-		status.text = "YELLOW  Snap Anchor      GREEN  Bartender Slot      PINK  Customer Point\nSNAP PASS = wall step (36,18) px • depth slot (-24,12) px • 3 depth slots = 2 floor tiles"
+		status.text = "YELLOW  Snap Anchor      GREEN  Bartender Slot      PINK  Customer Point\nSNAP PASS = wall step (36,18) px • depth slot (-27,13.5) px • 3 depth slots = 2 floor tiles"
 	else:
 		status.text = "SNAP FAIL: " + str(problems)
 
