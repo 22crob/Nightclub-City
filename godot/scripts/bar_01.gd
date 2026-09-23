@@ -1,6 +1,6 @@
 extends Node2D
 
-const BAR_TEXTURE: Texture2D = preload("res://assets/bar/bar_module_01.png")
+const BAR_TEXTURE: Texture2D = preload("res://assets/bar/bar_module_01_v2.png")
 
 const TILE_W: float = 72.0
 const TILE_H: float = 36.0
@@ -44,9 +44,10 @@ func _draw() -> void:
 	for i in range(service_tile.size()):
 		draw_line(service_tile[i], service_tile[(i + 1) % service_tile.size()], Color(0.35, 0.95, 0.55, 0.45), 1.0)
 
-	# Current Blender render under calibration. Keep its artwork unchanged while
-	# the logical 1x3 contract is validated in the test room.
-	draw_texture(BAR_TEXTURE, Vector2(-72.0, -94.0))
+	# Blender v2 calibration render: back shelf and front counter are separated
+	# by one full bartender/service tile. Offset is intentionally provisional
+	# so we can tune it against the Godot grid from the test-room screenshot.
+	draw_texture(BAR_TEXTURE, Vector2(-92.0, -50.0))
 
 	if show_debug_markers:
 		_draw_marker(placement_anchor.position, Color("#f6d365"), 4.0)
