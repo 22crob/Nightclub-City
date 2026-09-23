@@ -7,9 +7,16 @@ const TILE_H: float = 36.0
 const FOOTPRINT_W: int = 1
 const FOOTPRINT_D: int = 3
 
-# The Blender render is shifted toward the back wall as one rigid visual.
+# Side-to-side uses the normal 72x36 isometric wall step.
+const WALL_STEP: Vector2 = Vector2(36.0, 18.0)
+
+# Three bar depth slots span the same distance as two full floor tiles.
+# This keeps the asset's real proportions while preserving shelf/aisle/counter logic.
+const DEPTH_STEP: Vector2 = Vector2(-24.0, 12.0)
+
+# Shift the whole Blender render toward the wall as one rigid visual.
 # Internal shelf / aisle / counter spacing is unchanged.
-const ART_OFFSET: Vector2 = Vector2(-97.0, -55.0)
+const ART_OFFSET: Vector2 = Vector2(-73.0, -67.0)
 
 @export var show_debug_markers: bool = true
 @export var show_debug_tiles: bool = true
@@ -19,28 +26,20 @@ const ART_OFFSET: Vector2 = Vector2(-97.0, -55.0)
 @onready var customer_point: Marker2D = $CustomerPoint
 
 func _ready() -> void:
-	# Keep all interaction points derived from the same 72x36 grid contract.
-	placement_anchor.position = _iso(0.0, 0.0)
-	bartender_point.position = _tile_center(0, 1)
-	customer_point.position = _iso(0.5, 3.5)
+	placement_anchor.position = Vector2.ZERO
+	bartender_point.position = _bar_point(0.5, 1.5)
+	customer_point.position = _bar_point(0.5, 3.5)
 	queue_redraw()
 
-func _iso(tile_x: float, tile_y: float) -> Vector2:
-	return Vector2(
-		(tile_x - tile_y) * TILE_W * 0.5,
-		(tile_x + tile_y) * TILE_H * 0.5
-	)
+func _bar_point(wall_units: float, depth_slots: float) -> Vector2:
+	return WALL_STEP * wall_units + DEPTH_STEP * depth_slots
 
-func _tile_center(tile_x: int, tile_y: int) -> Vector2:
-	return _iso(float(tile_x) + 0.5, float(tile_y) + 0.5)
-
-func _tile_points(x: float, y: float, width: float, depth: float) -> PackedVector2Array:
-	return PackedVector2Array([
-		_iso(x, y),
-		_iso(x + width, y),
-		_iso(x + width, y + depth),
-		_iso(x, y + depth)
-	])
+func _bar_tile_points(depth_slot: int) -> PackedVector2Array:
+	var a: Vector2 = _bar_point(0.0, float(depth_slot))
+	var b: Vector2 = _bar_point(1.0, float(depth_slot))
+	var c: Vector2 = _bar_point(1.0, float(depth_slot + 1))
+	var d: Vector2 = _bar_point(0.0, float(depth_slot + 1))
+	return PackedVector2Array([a, b, c, d])
 
 func _draw() -> void:
 	if show_debug_tiles:
@@ -48,8 +47,7 @@ func _draw() -> void:
 		_draw_debug_tile(1, Color(0.35, 0.95, 0.55, 0.07), Color(0.35, 0.95, 0.55, 0.55))
 		_draw_debug_tile(2, Color(1.0, 0.35, 0.65, 0.05), Color(1.0, 0.35, 0.65, 0.35))
 
-	# Real Blender art. Do not move the Node2D to calibrate the art; only this
-	# local offset changes. The Node2D origin remains the grid snap anchor.
+	# Real Blender art. The Node2D origin remains the exact wall-grid snap anchor.
 	draw_texture(BAR_TEXTURE, ART_OFFSET)
 
 	if show_debug_markers:
@@ -58,7 +56,7 @@ func _draw() -> void:
 		_draw_marker(customer_point.position, Color("#ff6fae"), 4.0)
 
 func _draw_debug_tile(row: int, fill: Color, line: Color) -> void:
-	var tile: PackedVector2Array = _tile_points(0.0, float(row), 1.0, 1.0)
+	var tile: PackedVector2Array = _bar_tile_points(row)
 	draw_polygon(tile, PackedColorArray([fill]))
 	for i in range(tile.size()):
 		draw_line(tile[i], tile[(i + 1) % tile.size()], line, 1.0)
@@ -81,3 +79,9 @@ func get_customer_points() -> Array[Vector2]:
 
 func get_art_offset() -> Vector2:
 	return ART_OFFSET
+
+func get_wall_step() -> Vector2:
+	return WALL_STEP
+
+func get_depth_step() -> Vector2:
+	return DEPTH_STEP
