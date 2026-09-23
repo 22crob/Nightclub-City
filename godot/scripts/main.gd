@@ -5,6 +5,8 @@ const TILE_H: float = 36.0
 const CLUB_W: int = 14
 const CLUB_H: int = 11
 const WALL_H: float = 108.0
+const BLENDER_BAR_TEXTURE: Texture2D = preload("res://assets/bar/bar_module_01.png")
+const BLENDER_BAR_ART_OFFSET: Vector2 = Vector2(-90.0, -58.0)
 
 @onready var camera: Camera2D = $Camera2D
 @onready var zoom_out_button: Button = $HUD/ZoomControls/ZoomOut
@@ -1004,9 +1006,19 @@ func _has_bar_segment_at(tile: Vector2i) -> bool:
 	return false
 
 func _draw_production_bar_module(obj: Dictionary) -> void:
-	# Draw one exact-grid module. The shelf is fitted to one wall tile and the
-	# counter is fitted to one customer-facing tile edge. Repeated modules can
-	# touch, but their opaque art no longer overlaps neighboring modules.
+	var x: float = float(obj["x"])
+	var y: float = float(obj["y"])
+
+	# Main-game bar rendering now uses the same calibrated Blender asset and
+	# local visual offset validated in the asset test room. The logical bar tile
+	# still owns the wall snap cell; only the artwork extends into the compact
+	# shelf / bartender / counter depth slots.
+	if int(obj["y"]) == 0:
+		draw_texture(BLENDER_BAR_TEXTURE, _iso(x, y) + BLENDER_BAR_ART_OFFSET)
+		return
+
+	# Keep the legacy fallback for future non-top-wall bars until those
+	# orientations get their own Blender render/calibration pass.
 	_draw_modular_bar_shelf(obj)
 	_draw_modular_bar_segment(obj)
 
