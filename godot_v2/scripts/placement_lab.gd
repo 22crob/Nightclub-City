@@ -8,7 +8,7 @@ const OCCUPANCY_GRID = preload("res://scripts/occupancy_grid.gd")
 
 @onready var floor: TileMapLayer = $World/Floor
 @onready var furniture_layer: Node2D = $World/FurnitureLayer
-@onready var preview: Node2D = $World/FootprintPreview
+@onready var preview = $World/FootprintPreview
 @onready var status_label: Label = $UI/Panel/Status
 @onready var controls_label: Label = $UI/Panel/Controls
 
@@ -150,9 +150,12 @@ func _delete_at_hover() -> void:
 	var owner := occupancy.owner_at(hover_cell)
 	if owner == null or not is_instance_valid(owner):
 		return
+	if not owner is FurnitureBase:
+		return
 
-	occupancy.release(owner)
-	owner.queue_free()
+	var furniture := owner as FurnitureBase
+	occupancy.release(furniture)
+	furniture.queue_free()
 	_update_status()
 
 func _update_status() -> void:
