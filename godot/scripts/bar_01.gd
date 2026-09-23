@@ -1,6 +1,6 @@
 extends Node2D
 
-const BAR_TEXTURE: Texture2D = preload("res://assets/bar/bar_module_01_v2.png")
+const BAR_TEXTURE: Texture2D = preload("res://assets/bar/bar_module_01.png")
 
 const TILE_W: float = 72.0
 const TILE_H: float = 36.0
@@ -38,15 +38,12 @@ func _draw() -> void:
 	for i in range(footprint.size()):
 		draw_line(footprint[i], footprint[(i + 1) % footprint.size()], Color(0.25, 0.85, 1.0, 0.70), 1.5)
 
-	# Highlight the service aisle (middle tile) so bartender clearance is obvious.
 	var service_tile: PackedVector2Array = _tile_points(0.0, 1.0, 1.0, 1.0)
 	draw_polygon(service_tile, PackedColorArray([Color(0.35, 0.95, 0.55, 0.08)]))
 	for i in range(service_tile.size()):
 		draw_line(service_tile[i], service_tile[(i + 1) % service_tile.size()], Color(0.35, 0.95, 0.55, 0.45), 1.0)
 
-	# Blender v2 calibration render: back shelf and front counter are separated
-	# by one full bartender/service tile. Offset is intentionally provisional
-	# so we can tune it against the Godot grid from the test-room screenshot.
+	# Blender v2 calibration render using the existing Godot-imported texture path.
 	draw_texture(BAR_TEXTURE, Vector2(-92.0, -50.0))
 
 	if show_debug_markers:
