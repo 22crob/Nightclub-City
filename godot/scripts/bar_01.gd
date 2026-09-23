@@ -14,9 +14,9 @@ const WALL_STEP: Vector2 = Vector2(36.0, 18.0)
 # This keeps the asset's real proportions while preserving shelf/aisle/counter logic.
 const DEPTH_STEP: Vector2 = Vector2(-27.0, 13.5)
 
-# Shift the whole Blender render toward the wall as one rigid visual.
+# Align the rear shelf base to the wall/floor seam as one rigid visual.
 # Internal shelf / aisle / counter spacing is unchanged.
-const ART_OFFSET: Vector2 = Vector2(-65.0, -71.0)
+const ART_OFFSET: Vector2 = Vector2(-90.0, -58.0)
 
 @export var show_debug_markers: bool = true
 @export var show_debug_tiles: bool = true
