@@ -60,7 +60,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _build_native_tileset() -> void:
 	var tile_set := TileSet.new()
 	tile_set.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
-	tile_set.tile_layout = TileSet.TILE_LAYOUT_STACKED
+	tile_set.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
 	tile_set.tile_size = TILE_SIZE
 
 	var atlas := TileSetAtlasSource.new()
