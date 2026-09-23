@@ -1,5 +1,8 @@
 extends Node2D
 
+const GRID_SNAP = preload("res://scripts/grid_snap.gd")
+const BAR_SCENE: PackedScene = preload("res://scenes/furniture/bar_01.tscn")
+
 const TILE_W: float = 48.0
 const TILE_H: float = 24.0
 const CLUB_W: int = 14
@@ -10,6 +13,7 @@ const BLENDER_BAR_ART_OFFSET: Vector2 = Vector2(-90.0, -58.0)
 const BAR_COUNTER_TOWARD_WALL_SHIFT: Vector2 = Vector2(24.0, -12.0)
 const BAR_LOGICAL_DEPTH: int = 3
 
+@onready var furniture_layer: Node2D = $FurnitureLayer
 @onready var camera: Camera2D = $Camera2D
 @onready var zoom_out_button: Button = $HUD/ZoomControls/ZoomOut
 @onready var zoom_in_button: Button = $HUD/ZoomControls/ZoomIn
@@ -46,6 +50,7 @@ var hover_tile: Vector2i = Vector2i(-1, -1)
 var placed_objects: Array = []
 var selected_object_index: int = -1
 var moving_object_index: int = -1
+var bar_instances: Array[Node2D] = []
 const SAVE_PATH: String = "user://club_layout.json"
 const ECONOMY_SAVE_PATH: String = "user://economy.json"
 const NPC_SPEED: float = 0.95
@@ -133,6 +138,7 @@ func _ready() -> void:
 	done_button.pressed.connect(_deselect_object)
 	_load_layout()
 	_prepare_single_bar_calibration()
+	_sync_bar_instances()
 	_load_economy()
 	current_level = _level_for_xp(xp)
 	_initialize_npcs()
@@ -403,10 +409,7 @@ func _zoom_in() -> void:
 	_set_zoom(zoom_level + 0.10)
 
 func _iso(tile_x: float, tile_y: float) -> Vector2:
-	return Vector2(
-		(tile_x - tile_y) * TILE_W * 0.5,
-		(tile_x + tile_y) * TILE_H * 0.5
-	)
+	return GRID_SNAP.grid_to_world_f(tile_x, tile_y)
 
 func _tile_points(x: float, y: float, width: float, depth: float) -> PackedVector2Array:
 	return PackedVector2Array([
@@ -768,9 +771,7 @@ func _cancel_placement() -> void:
 	queue_redraw()
 
 func _world_to_tile(world_pos: Vector2) -> Vector2i:
-	var tile_x: float = world_pos.y / TILE_H + world_pos.x / TILE_W
-	var tile_y: float = world_pos.y / TILE_H - world_pos.x / TILE_W
-	return Vector2i(int(floor(tile_x)), int(floor(tile_y)))
+	return GRID_SNAP.world_to_grid(world_pos)
 
 func _resolve_placement_tile(raw_tile: Vector2i) -> Vector2i:
 	if current_item.is_empty():
@@ -1023,24 +1024,37 @@ func _place_current_item(tile: Vector2i) -> void:
 	queue_redraw()
 
 func _draw_placed_objects() -> void:
-	var top_wall_bars: Array = []
-	var other_objects: Array = []
-
 	for obj in placed_objects:
+		# Top-wall production bars are real Bar_01 scene instances under
+		# FurnitureLayer. Everything else still uses the legacy renderer.
 		if str(obj["kind"]) == "bar" and str(obj["id"]) == "bar_segment" and int(obj["y"]) == 0:
-			top_wall_bars.append(obj)
-		else:
-			other_objects.append(obj)
-
-	# Draw the wall run in isometric depth order, not purchase order.
-	top_wall_bars.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return int(a["x"]) < int(b["x"])
-	)
-
-	for obj in other_objects:
+			continue
 		_draw_build_item(obj)
-	for obj in top_wall_bars:
-		_draw_build_item(obj)
+
+func _sync_bar_instances() -> void:
+	for child in furniture_layer.get_children():
+		child.free()
+	bar_instances.clear()
+
+	var bar_index: int = 0
+	for obj in placed_objects:
+		if str(obj["kind"]) != "bar" or str(obj["id"]) != "bar_segment":
+			continue
+		if int(obj["y"]) != 0:
+			continue
+
+		var grid_cell: Vector2i = Vector2i(int(obj["x"]), int(obj["y"]))
+		var bar_node: Node2D = BAR_SCENE.instantiate() as Node2D
+		bar_node.name = "BarGrid_%02d_%02d" % [grid_cell.x, grid_cell.y]
+		bar_node.position = GRID_SNAP.grid_to_world(grid_cell)
+		bar_node.set("show_debug_markers", false)
+		bar_node.set("show_debug_tiles", false)
+		bar_node.set_meta("grid_cell", grid_cell)
+		bar_node.set_meta("footprint", Vector2i(1, BAR_LOGICAL_DEPTH))
+		bar_node.z_index = bar_index
+		furniture_layer.add_child(bar_node)
+		bar_instances.append(bar_node)
+		bar_index += 1
 
 func _draw_build_item(obj: Dictionary) -> void:
 	var x: float = float(obj["x"])
@@ -1729,6 +1743,7 @@ func _seat_interaction_point(obj: Dictionary) -> Vector2:
 	return point
 
 func _refresh_npc_targets_after_layout_change() -> void:
+	_sync_bar_instances()
 	for i in range(npc_agents.size()):
 		var npc: Dictionary = npc_agents[i]
 		var state: String = str(npc["state"])
