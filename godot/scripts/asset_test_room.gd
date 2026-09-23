@@ -73,7 +73,7 @@ func _update_snap_status() -> void:
 	if problems.is_empty():
 		status.text = "YELLOW  Snap Anchor      GREEN  Bartender Tile      PINK  Customer Point\nSNAP PASS = 1 wall tile = (36,18) px • module footprint = 1x3 • no placement drift"
 	else:
-		status.text = "SNAP FAIL: " + ", ".join(problems)
+		status.text = "SNAP FAIL: " + str(problems)
 
 func _draw() -> void:
 	draw_rect(Rect2(0.0, 0.0, 1280.0, 720.0), Color("#08060f"))
