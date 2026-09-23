@@ -2,17 +2,17 @@ extends Node2D
 
 const BAR_TEXTURE: Texture2D = preload("res://assets/bar/bar_module_01.png")
 
-const TILE_W: float = 72.0
-const TILE_H: float = 36.0
+const TILE_W: float = 48.0
+const TILE_H: float = 24.0
 const FOOTPRINT_W: int = 1
 const FOOTPRINT_D: int = 3
 
-# Side-to-side uses the normal 72x36 isometric wall step.
-const WALL_STEP: Vector2 = Vector2(36.0, 18.0)
+# Side-to-side uses the normal 48x24 isometric wall step.
+const WALL_STEP: Vector2 = Vector2(24.0, 12.0)
 
 # Three bar depth slots span the same distance as two full floor tiles.
 # This keeps the asset's real proportions while preserving shelf/aisle/counter logic.
-const DEPTH_STEP: Vector2 = Vector2(-27.0, 13.5)
+const DEPTH_STEP: Vector2 = Vector2(-16.0, 8.0)
 
 # Align the rear shelf base to the wall/floor seam as one rigid visual.
 # Internal shelf / aisle / counter spacing is unchanged.
