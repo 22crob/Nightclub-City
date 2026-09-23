@@ -8,8 +8,10 @@ script = ExtResource("1_lab")
 
 [node name="World" type="Node2D" parent="."]
 position = Vector2(590, 150)
+y_sort_enabled = true
 
 [node name="Floor" type="TileMapLayer" parent="World"]
+y_sort_enabled = true
 
 [node name="FurnitureLayer" type="Node2D" parent="World"]
 z_index = 10
