@@ -7,16 +7,17 @@ const TILE_H: float = 24.0
 const FOOTPRINT_W: int = 1
 const FOOTPRINT_D: int = 3
 
-# Side-to-side uses the normal 48x24 isometric wall step.
+# One wall module = one 48x24 isometric tile along the wall.
 const WALL_STEP: Vector2 = Vector2(24.0, 12.0)
 
-# Three bar depth slots span the same distance as two full floor tiles.
-# This keeps the asset's real proportions while preserving shelf/aisle/counter logic.
-const DEPTH_STEP: Vector2 = Vector2(-16.0, 8.0)
+# One logical depth row = one full 48x24 floor tile.
+# Slot 0 rear shelf, slot 1 bartender lane, slot 2 front counter.
+const DEPTH_STEP: Vector2 = Vector2(-24.0, 12.0)
 
-# Align the rear shelf base to the wall/floor seam as one rigid visual.
-# Internal shelf / aisle / counter spacing is unchanged.
+# The shelf keeps the calibrated wall fit. The counter is separated from the
+# source render and pulled one exact grid row toward the wall.
 const ART_OFFSET: Vector2 = Vector2(-90.0, -58.0)
+const COUNTER_TOWARD_WALL_SHIFT: Vector2 = Vector2(24.0, -12.0)
 
 @export var show_debug_markers: bool = true
 @export var show_debug_tiles: bool = true
@@ -25,7 +26,11 @@ const ART_OFFSET: Vector2 = Vector2(-90.0, -58.0)
 @onready var bartender_point: Marker2D = $BartenderPoint
 @onready var customer_point: Marker2D = $CustomerPoint
 
+var shelf_texture: Texture2D
+var counter_texture: Texture2D
+
 func _ready() -> void:
+	_prepare_bar_parts()
 	placement_anchor.position = Vector2.ZERO
 	bartender_point.position = _bar_point(0.5, 1.5)
 	customer_point.position = _bar_point(0.5, 3.5)
@@ -41,14 +46,120 @@ func _bar_tile_points(depth_slot: int) -> PackedVector2Array:
 	var d: Vector2 = _bar_point(0.0, float(depth_slot + 1))
 	return PackedVector2Array([a, b, c, d])
 
+func _prepare_bar_parts() -> void:
+	var source: Image = BAR_TEXTURE.get_image()
+	if source == null:
+		return
+
+	var width: int = source.get_width()
+	var height: int = source.get_height()
+	if width <= 0 or height <= 0:
+		return
+
+	var visited: PackedByteArray = PackedByteArray()
+	visited.resize(width * height)
+	var components: Array = []
+	var directions: Array[Vector2i] = [
+		Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1),
+		Vector2i(-1, 0),                       Vector2i(1, 0),
+		Vector2i(-1, 1),  Vector2i(0, 1),  Vector2i(1, 1)
+	]
+
+	for py in range(height):
+		for px in range(width):
+			var start_index: int = py * width + px
+			if visited[start_index] != 0:
+				continue
+			visited[start_index] = 1
+			if source.get_pixel(px, py).a <= 0.02:
+				continue
+
+			var queue: Array[Vector2i] = [Vector2i(px, py)]
+			var queue_index: int = 0
+			var pixels: Array[Vector2i] = []
+			var sum: Vector2 = Vector2.ZERO
+
+			while queue_index < queue.size():
+				var point: Vector2i = queue[queue_index]
+				queue_index += 1
+				pixels.append(point)
+				sum += Vector2(point.x, point.y)
+
+				for direction in directions:
+					var neighbor: Vector2i = point + direction
+					if neighbor.x < 0 or neighbor.y < 0 or neighbor.x >= width or neighbor.y >= height:
+						continue
+					var neighbor_index: int = neighbor.y * width + neighbor.x
+					if visited[neighbor_index] != 0:
+						continue
+					visited[neighbor_index] = 1
+					if source.get_pixel(neighbor.x, neighbor.y).a > 0.02:
+						queue.append(neighbor)
+
+			components.append({
+				"pixels": pixels,
+				"center": sum / float(pixels.size()),
+				"size": pixels.size()
+			})
+
+	if components.size() < 2:
+		shelf_texture = BAR_TEXTURE
+		counter_texture = null
+		return
+
+	var largest_index: int = -1
+	var second_index: int = -1
+	var largest_size: int = -1
+	var second_size: int = -1
+
+	for i in range(components.size()):
+		var component_size: int = int(components[i]["size"])
+		if component_size > largest_size:
+			second_index = largest_index
+			second_size = largest_size
+			largest_index = i
+			largest_size = component_size
+		elif component_size > second_size:
+			second_index = i
+			second_size = component_size
+
+	var center_a: Vector2 = components[largest_index]["center"]
+	var center_b: Vector2 = components[second_index]["center"]
+	var shelf_center: Vector2 = center_a
+	var counter_center: Vector2 = center_b
+
+	if (center_b.x - center_b.y) > (center_a.x - center_a.y):
+		shelf_center = center_b
+		counter_center = center_a
+
+	var shelf_image: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	var counter_image: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	shelf_image.fill(Color(0, 0, 0, 0))
+	counter_image.fill(Color(0, 0, 0, 0))
+
+	for component in components:
+		var component_center: Vector2 = component["center"]
+		var shelf_distance: float = component_center.distance_squared_to(shelf_center)
+		var counter_distance: float = component_center.distance_squared_to(counter_center)
+		var target: Image = shelf_image if shelf_distance <= counter_distance else counter_image
+		for point in component["pixels"]:
+			target.set_pixel(point.x, point.y, source.get_pixel(point.x, point.y))
+
+	shelf_texture = ImageTexture.create_from_image(shelf_image)
+	counter_texture = ImageTexture.create_from_image(counter_image)
+
 func _draw() -> void:
 	if show_debug_tiles:
 		_draw_debug_tile(0, Color(0.20, 0.75, 1.0, 0.07), Color(0.25, 0.85, 1.0, 0.55))
 		_draw_debug_tile(1, Color(0.35, 0.95, 0.55, 0.07), Color(0.35, 0.95, 0.55, 0.55))
 		_draw_debug_tile(2, Color(1.0, 0.35, 0.65, 0.05), Color(1.0, 0.35, 0.65, 0.35))
 
-	# Real Blender art. The Node2D origin remains the exact wall-grid snap anchor.
-	draw_texture(BAR_TEXTURE, ART_OFFSET)
+	if shelf_texture != null:
+		draw_texture(shelf_texture, ART_OFFSET)
+	if counter_texture != null:
+		draw_texture(counter_texture, ART_OFFSET + COUNTER_TOWARD_WALL_SHIFT)
+	elif shelf_texture == null:
+		draw_texture(BAR_TEXTURE, ART_OFFSET)
 
 	if show_debug_markers:
 		_draw_marker(placement_anchor.position, Color("#f6d365"), 4.0)
