@@ -9,7 +9,7 @@ const ORIGIN: Vector2 = Vector2(500.0, 185.0)
 const TEST_MODULE_COUNT: int = 6
 
 const WALL_STEP: Vector2 = Vector2(24.0, 12.0)
-const BAR_DEPTH_STEP: Vector2 = Vector2(-16.0, 8.0)
+const BAR_DEPTH_STEP: Vector2 = Vector2(-24.0, 12.0)
 
 @export var bar_scene: PackedScene
 
@@ -83,7 +83,7 @@ func _update_snap_status() -> void:
 
 	var status: Label = $HUD/Status
 	if problems.is_empty():
-		status.text = "YELLOW  Snap Anchor      GREEN  Bartender Slot      PINK  Customer Point\nSNAP PASS = wall step (24,12) px • depth slot (-16,8) px • 3 depth slots = 2 floor tiles"
+		status.text = "YELLOW  Snap Anchor      GREEN  Bartender Slot      PINK  Customer Point\nSNAP PASS = wall step (24,12) px • depth row (-24,12) px • 1x3 logical bar footprint"
 	else:
 		status.text = "SNAP FAIL: " + str(problems)
 
@@ -112,12 +112,12 @@ func _draw() -> void:
 		draw_polygon(wall, PackedColorArray([Color("#261a33")]))
 		draw_line(a - Vector2(0.0, WALL_H), b - Vector2(0.0, WALL_H), Color("#b03fff"), 1.5)
 
-	# Bar footprint: six modules wide, three smaller depth slots.
+	# Bar footprint: six modules wide, three full 48x24 logical depth rows.
 	var test_strip: PackedVector2Array = _bar_strip_points(0.0, 0.0, float(TEST_MODULE_COUNT), 3.0)
 	for i in range(test_strip.size()):
 		draw_line(test_strip[i], test_strip[(i + 1) % test_strip.size()], Color("#f6d365"), 2.0)
 
-	# Middle smaller slot = shared bartender/service aisle.
+	# Middle row = shared bartender/service aisle.
 	var service_strip: PackedVector2Array = _bar_strip_points(0.0, 1.0, float(TEST_MODULE_COUNT), 1.0)
 	draw_polygon(service_strip, PackedColorArray([Color(0.35, 0.95, 0.55, 0.05)]))
 	for i in range(service_strip.size()):
