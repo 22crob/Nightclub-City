@@ -1422,7 +1422,7 @@ func _rotate_selected_object() -> void:
 	var obj: Dictionary = placed_objects[selected_object_index]
 	if str(obj["kind"]) == "bar":
 		if design_drawer.visible:
-			design_hint.text = "Bar segments are fixed 1x1 modules"
+			design_hint.text = "Bar modules are fixed 1x3 grid footprints"
 		return
 
 	var old_w: int = int(obj["w"])
