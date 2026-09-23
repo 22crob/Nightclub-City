@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/placement_lab.gd" id="1_lab"]
 [ext_resource type="Script" path="res://scripts/footprint_preview.gd" id="2_preview"]
+[ext_resource type="Script" path="res://scripts/back_wall_preview.gd" id="3_wall"]
 
 [node name="PlacementLab" type="Node2D"]
 script = ExtResource("1_lab")
@@ -12,6 +13,10 @@ y_sort_enabled = true
 
 [node name="Floor" type="TileMapLayer" parent="World"]
 y_sort_enabled = true
+
+[node name="BackWall" type="Node2D" parent="World"]
+z_index = 2
+script = ExtResource("3_wall")
 
 [node name="FurnitureLayer" type="Node2D" parent="World"]
 z_index = 10
