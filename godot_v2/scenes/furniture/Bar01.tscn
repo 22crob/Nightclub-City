@@ -13,8 +13,8 @@ texture = ExtResource("2_tex")
 [node name="CounterSprite" type="Sprite2D" parent="."]
 z_index = 1
 
-[node name="AnchorMarker" type="Marker2D" parent="."]
+[node name="ShelfGroundAnchor" type="Marker2D" parent="."]
 
 [node name="BartenderRowMarker" type="Marker2D" parent="."]
 
-[node name="CounterRowMarker" type="Marker2D" parent="."]
+[node name="CounterGroundAnchor" type="Marker2D" parent="."]
